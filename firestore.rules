@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users {
+      allow list: if request.auth != null;
+    }
+
+    // Rules for the 'posts' collection
+    match /posts/{postId} {
+      // Allow authenticated users to read posts
+      allow read: if request.auth != null;
+
+      // Allow creation if the author.uid matches the authenticated user's uid
+      allow create: if request.auth != null && request.resource.data.author.uid == request.auth.uid;
+      
+      // Allow delete if the user is the author
+      allow delete: if request.auth != null && resource.data.author.uid == request.auth.uid;
+
+      // Allow updates if:
+      // 1. User is the author (can edit content, etc.)
+      // 2. OR User is just updating likes/likedByUsers (liking/unliking)
+      allow update: if request.auth != null && (
+        resource.data.author.uid == request.auth.uid || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedByUsers'])
+      );
+    }
+    
+    match /posts {
+      allow list: if request.auth != null;
+    }
+
+    // Rules for the 'settings' collection
+    match /settings/site {
+      allow get: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
