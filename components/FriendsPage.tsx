@@ -126,12 +126,12 @@ export const FriendsPage: React.FC = () => {
   }, [user, userProfile, view]);
 
   return (
-    <div className="w-full max-w-[1200px] mx-auto p-4 md:p-6">
-      <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr] gap-8 items-start">
+    <div className="w-full max-w-[1600px] mx-auto p-2 md:p-6">
+      <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[360px_1fr] gap-8 items-start">
          
          {/* Sidebar Navigation */}
-         <div className="sticky top-20">
-            <div className="flex items-center justify-between mb-4">
+         <div className="md:sticky md:top-20">
+            <div className="flex items-center justify-between mb-4 px-2">
                 <h1 className="text-2xl font-bold text-slate-900">Friends</h1>
                 <Button variant="ghost" size="icon" className="rounded-full bg-slate-100 hover:bg-slate-200">
                     <Settings className="w-5 h-5 text-slate-700" />
@@ -142,37 +142,37 @@ export const FriendsPage: React.FC = () => {
                <Button 
                  variant={view === 'requests' ? 'secondary' : 'ghost'}
                  onClick={() => setView('requests')}
-                 className="w-full justify-start h-12 gap-3 text-base font-medium px-2"
+                 className={`w-full justify-start h-12 gap-3 text-base font-medium px-2 ${view === 'requests' ? 'bg-synapse-100/50 text-synapse-700' : ''}`}
                >
-                  <div className={`p-1.5 rounded-full ${view === 'requests' ? 'bg-synapse-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  <div className={`p-2 rounded-full flex items-center justify-center ${view === 'requests' ? 'bg-synapse-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
                      <UserPlus className="w-5 h-5" />
                   </div>
                   <span className="flex-1 text-left">Friend Requests</span>
-                  {requests.length > 0 && <ChevronRight className="w-4 h-4 text-slate-400" />}
+                  {requests.length > 0 && <ChevronRight className="w-5 h-5 text-slate-400" />}
                </Button>
 
                <Button 
                  variant={view === 'suggestions' ? 'secondary' : 'ghost'}
                  onClick={() => setView('suggestions')}
-                 className="w-full justify-start h-12 gap-3 text-base font-medium px-2"
+                 className={`w-full justify-start h-12 gap-3 text-base font-medium px-2 ${view === 'suggestions' ? 'bg-synapse-100/50 text-synapse-700' : ''}`}
                >
-                  <div className={`p-1.5 rounded-full ${view === 'suggestions' ? 'bg-synapse-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  <div className={`p-2 rounded-full flex items-center justify-center ${view === 'suggestions' ? 'bg-synapse-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
                      <UserSearch className="w-5 h-5" />
                   </div>
                   <span className="flex-1 text-left">Suggestions</span>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
                </Button>
 
                <Button 
                  variant={view === 'all' ? 'secondary' : 'ghost'}
                  onClick={() => setView('all')}
-                 className="w-full justify-start h-12 gap-3 text-base font-medium px-2"
+                 className={`w-full justify-start h-12 gap-3 text-base font-medium px-2 ${view === 'all' ? 'bg-synapse-100/50 text-synapse-700' : ''}`}
                >
-                  <div className={`p-1.5 rounded-full ${view === 'all' ? 'bg-synapse-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  <div className={`p-2 rounded-full flex items-center justify-center ${view === 'all' ? 'bg-synapse-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
                      <Users className="w-5 h-5" />
                   </div>
                   <span className="flex-1 text-left">All Friends</span>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
                </Button>
             </div>
             
@@ -180,7 +180,7 @@ export const FriendsPage: React.FC = () => {
          </div>
 
          {/* Main Content Area */}
-         <div className="min-h-[500px]">
+         <div className="min-h-[500px] w-full min-w-0">
             {view === 'requests' && (
                <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -191,7 +191,7 @@ export const FriendsPage: React.FC = () => {
                   </div>
 
                   {requests.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                          {requests.map(req => (
                              <Card key={req.id} className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="aspect-square bg-slate-100 relative">
@@ -232,28 +232,28 @@ export const FriendsPage: React.FC = () => {
                   </div>
                   
                   {loading ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {[1,2,3,4,5].map(i => (
                            <div key={i} className="aspect-[3/4] bg-slate-100 rounded-xl animate-pulse" />
                         ))}
                      </div>
                   ) : suggestions.length > 0 ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                         {suggestions.map(s => (
-                           <Card key={s.uid} className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="aspect-square bg-slate-100 relative">
+                           <Card key={s.uid} className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                              <div className="aspect-square bg-slate-100 relative shrink-0">
                                  <img 
                                    src={s.photoURL || `https://ui-avatars.com/api/?name=${s.displayName}`} 
                                    className="w-full h-full object-cover" 
                                    alt={s.displayName || 'User'}
                                  />
                               </div>
-                              <div className="p-3 space-y-3">
-                                 <div className="space-y-1">
+                              <div className="p-3 space-y-3 flex-1 flex flex-col">
+                                 <div className="space-y-1 flex-1">
                                     <h3 className="font-semibold text-[16px] text-slate-900 truncate leading-tight">{s.displayName}</h3>
                                     <p className="text-xs text-slate-500">Suggested for you</p>
                                  </div>
-                                 <div className="space-y-2">
+                                 <div className="space-y-2 mt-auto">
                                     <FriendButton targetUid={s.uid} className="w-full" />
                                     <Button variant="secondary" className="w-full text-slate-700 bg-slate-100 hover:bg-slate-200">Remove</Button>
                                  </div>

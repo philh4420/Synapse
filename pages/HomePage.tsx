@@ -9,6 +9,7 @@ import { FriendsPage } from '../components/FriendsPage';
 import { Header } from '../components/Header';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { cn } from '../lib/utils';
 
 export const HomePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('feed');
@@ -40,6 +41,8 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile';
+
   return (
     <div className="min-h-screen bg-[#F0F2F5]"> {/* Facebook-like background color */}
       
@@ -47,20 +50,28 @@ export const HomePage: React.FC = () => {
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content Container */}
-      <div className="pt-14 flex justify-center min-h-screen">
+      <div className="pt-14 flex justify-between min-h-screen">
         
         {/* Left Sidebar (Shortcuts) - Fixed */}
-        <div className="hidden lg:block w-[280px] xl:w-[360px] flex-shrink-0">
+        <div className="hidden lg:block w-[280px] xl:w-[360px] flex-shrink-0 z-10">
            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
         {/* Center Content (Feed/Profile) - Scrollable */}
-        <div className="flex-1 max-w-[740px] w-full mx-auto lg:px-8 py-6">
+        {/* Adjusted width logic: Fixed width for Feed, Fluid for others */}
+        <div className={cn(
+          "flex-1 w-full mx-auto py-6 transition-all duration-300 min-w-0",
+          isWidePage ? "px-2 md:px-4 max-w-[1400px]" : "max-w-[740px] lg:px-8"
+        )}>
            {renderContent()}
         </div>
 
         {/* Right Sidebar (Contacts/Ads) - Fixed */}
-        <div className="hidden lg:block w-[280px] xl:w-[360px] flex-shrink-0">
+        {/* Hide Right Panel on 'friends' tab to give full width to the friends manager interface, similar to FB */}
+        <div className={cn(
+           "hidden flex-shrink-0 z-10",
+           activeTab === 'friends' ? 'xl:hidden' : 'lg:block w-[280px] xl:w-[360px]'
+        )}>
            <RightPanel />
         </div>
 
