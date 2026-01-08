@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, 
-  Trash2, AlertCircle, EyeOff, Send, Smile, Camera, X, MessageSquare 
+  Trash2, AlertCircle, EyeOff, Send, Smile, Camera, X, MessageSquare, Users, Lock
 } from 'lucide-react';
 import { Post as PostType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -128,6 +128,14 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
     return formatDistanceToNow(date, { addSuffix: true }).replace('about ', '').replace('less than a minute ago', 'Just now');
   };
 
+  const getPrivacyIcon = (p?: string) => {
+    switch(p) {
+      case 'friends': return <Users className="w-3 h-3" />;
+      case 'only_me': return <Lock className="w-3 h-3" />;
+      default: return <Globe className="w-3 h-3" />;
+    }
+  };
+
   // --- Photo Grid Layout Logic ---
   const renderPhotoGrid = () => {
     if (displayImages.length === 1) {
@@ -207,7 +215,7 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
                     {getTimestamp(post.timestamp)}
                  </span>
                  <span className="text-[10px] font-bold">·</span>
-                 <Globe className="w-3 h-3" />
+                 {getPrivacyIcon(post.privacy)}
               </div>
            </div>
         </div>

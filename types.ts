@@ -42,6 +42,7 @@ export interface Post {
   likedByUsers: string[];
   
   // New Features
+  privacy?: 'public' | 'friends' | 'only_me'; // Privacy setting
   background?: string; // CSS gradient class
   feeling?: string; // e.g., "😊 feeling happy"
   location?: string; // e.g., "at New York City"

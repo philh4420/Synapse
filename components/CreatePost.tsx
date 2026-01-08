@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Image, Video, Smile, X, Loader2, Globe, MapPin, UserPlus, ChevronDown, 
-  Type, Search, ArrowLeft, MoreHorizontal, Gift, Navigation
+  Type, Search, ArrowLeft, MoreHorizontal, Gift, Navigation, Users, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/Button';
@@ -17,6 +17,12 @@ import {
   DialogTrigger,
   DialogClose
 } from './ui/Dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/DropdownMenu';
 import { uploadToCloudinary } from '../utils/upload';
 import { collection, addDoc, serverTimestamp, getDocs, query, limit, where } from 'firebase/firestore';
 import { db, GIPHY_API_KEY } from '../firebaseConfig';
@@ -59,6 +65,7 @@ export const CreatePost: React.FC = () => {
   const [location, setLocation] = useState<string | null>(null);
   const [taggedUsers, setTaggedUsers] = useState<UserProfile[]>([]);
   const [gif, setGif] = useState<string | null>(null);
+  const [privacy, setPrivacy] = useState<'public' | 'friends' | 'only_me'>('public');
 
   // UI State
   const [isUploading, setIsUploading] = useState(false);
@@ -222,6 +229,7 @@ export const CreatePost: React.FC = () => {
         feeling: feeling ? `${feeling.emoji} feeling ${feeling.label}` : null,
         location: location || null,
         taggedUsers: taggedUsers.map(u => u.displayName),
+        privacy: privacy, // Save privacy setting
         
         timestamp: serverTimestamp(),
         likes: 0,
@@ -239,6 +247,7 @@ export const CreatePost: React.FC = () => {
       setFeeling(null);
       setLocation(null);
       setTaggedUsers([]);
+      setPrivacy('public');
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to create post:", error);
@@ -248,6 +257,22 @@ export const CreatePost: React.FC = () => {
   };
 
   const firstName = userProfile?.displayName?.split(' ')[0] || 'User';
+
+  const getPrivacyIcon = (p: string) => {
+    switch(p) {
+      case 'friends': return <Users className="w-3 h-3" />;
+      case 'only_me': return <Lock className="w-3 h-3" />;
+      default: return <Globe className="w-3 h-3" />;
+    }
+  };
+
+  const getPrivacyLabel = (p: string) => {
+    switch(p) {
+      case 'friends': return 'Friends';
+      case 'only_me': return 'Only me';
+      default: return 'Public';
+    }
+  };
 
   return (
     <Card className="px-4 pt-3 pb-2 shadow-sm border-slate-200 bg-white rounded-xl">
@@ -299,11 +324,42 @@ export const CreatePost: React.FC = () => {
                         {location && <span className="font-normal text-slate-600"> at 📍 {location}</span>}
                         {taggedUsers.length > 0 && <span className="font-normal text-slate-600"> with {taggedUsers.length} others</span>}
                       </div>
-                      <div className="flex items-center gap-1 bg-slate-200/60 hover:bg-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-600 w-fit mt-0.5 cursor-pointer">
-                        <Globe className="w-3 h-3" />
-                        <span>Public</span>
-                        <ChevronDown className="w-3 h-3" />
-                      </div>
+                      
+                      {/* Privacy Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <div className="flex items-center gap-1 bg-slate-200/60 hover:bg-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-600 w-fit mt-0.5 cursor-pointer select-none transition-colors">
+                            {getPrivacyIcon(privacy)}
+                            <span>{getPrivacyLabel(privacy)}</span>
+                            <ChevronDown className="w-3 h-3" />
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-[240px] p-2 rounded-xl">
+                          <div className="px-2 py-1.5 text-sm font-semibold text-slate-900 mb-1">Who can see your post?</div>
+                          <DropdownMenuItem onClick={() => setPrivacy('public')} className="gap-3 p-2 rounded-lg cursor-pointer">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Globe className="w-5 h-5 text-slate-700" /></div>
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900">Public</span>
+                              <span className="text-xs text-slate-500">Anyone on or off Synapse</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setPrivacy('friends')} className="gap-3 p-2 rounded-lg cursor-pointer">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Users className="w-5 h-5 text-slate-700" /></div>
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900">Friends</span>
+                              <span className="text-xs text-slate-500">Your friends on Synapse</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setPrivacy('only_me')} className="gap-3 p-2 rounded-lg cursor-pointer">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Lock className="w-5 h-5 text-slate-700" /></div>
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900">Only me</span>
+                              <span className="text-xs text-slate-500">Only you can see this post</span>
+                            </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                     </div>
                   </div>
 
