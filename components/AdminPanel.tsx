@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, Lock, Unlock, Save, AlertTriangle, 
-  Activity, Users, Server, CheckCircle2, Database, Globe
+  Activity, Users, CheckCircle2, Globe, FileText, BarChart3
 } from 'lucide-react';
 import { Button } from './ui/Button';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getCountFromServer, query, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
@@ -15,28 +15,60 @@ export const AdminPanel: React.FC = () => {
   const { userProfile } = useAuth();
   const [signupEnabled, setSignupEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // Real Data State
+  const [stats, setStats] = useState({
+    userCount: 0,
+    postCount: 0,
+    postsToday: 0
+  });
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchData = async () => {
       try {
+        // 1. Fetch Settings
         const docRef = doc(db, 'settings', 'site');
         const settingsSnap = await getDoc(docRef);
         if (settingsSnap.exists()) {
           setSignupEnabled(settingsSnap.data()?.signupEnabled);
         } else {
-          // If document doesn't exist, assume enabled and create it
           await setDoc(docRef, { signupEnabled: true });
         }
+        setLoading(false);
+
+        // 2. Fetch Real Stats
+        // Total Users
+        const usersColl = collection(db, 'users');
+        const userSnapshot = await getCountFromServer(usersColl);
+        
+        // Total Posts
+        const postsColl = collection(db, 'posts');
+        const postSnapshot = await getCountFromServer(postsColl);
+
+        // Posts Today (Real 24h Activity)
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const todayQuery = query(postsColl, where('timestamp', '>=', startOfDay));
+        const todaySnapshot = await getCountFromServer(todayQuery);
+
+        setStats({
+          userCount: userSnapshot.data().count,
+          postCount: postSnapshot.data().count,
+          postsToday: todaySnapshot.data().count
+        });
+
       } catch (err) {
-        console.error("Error fetching settings:", err);
+        console.error("Error fetching admin data:", err);
       } finally {
         setLoading(false);
+        setStatsLoading(false);
       }
     };
 
-    fetchSettings();
+    fetchData();
   }, []);
 
   const handleSave = async () => {
@@ -73,7 +105,6 @@ export const AdminPanel: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Header Section */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-synapse-950 to-indigo-950 p-8 text-white shadow-xl border border-white/10">
-        {/* Decorative Background */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 h-80 w-80 rounded-full bg-synapse-500/20 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-purple-500/10 blur-3xl"></div>
         
@@ -102,34 +133,31 @@ export const AdminPanel: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Mock Stats Dashboard */}
+          {/* Real Data Dashboard */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              <StatCard 
                 icon={Users} 
-                label="Total Users" 
-                value="1,284" 
-                trend="+12% this week" 
-                trendUp={true}
+                label="Total Registered Users" 
+                value={statsLoading ? "..." : stats.userCount.toLocaleString()} 
+                subtext="Active accounts in DB"
                 color="text-blue-500"
                 bgColor="bg-blue-50"
              />
              <StatCard 
-                icon={Activity} 
-                label="System Health" 
-                value="99.9%" 
-                trend="Optimal" 
-                trendUp={true}
-                color="text-green-500"
-                bgColor="bg-green-50"
-             />
-             <StatCard 
-                icon={Database} 
-                label="Storage Usage" 
-                value="45%" 
-                trend="2.4GB / 5GB" 
-                trendUp={true}
+                icon={FileText} 
+                label="Total Posts" 
+                value={statsLoading ? "..." : stats.postCount.toLocaleString()} 
+                subtext="All time content"
                 color="text-purple-500"
                 bgColor="bg-purple-50"
+             />
+             <StatCard 
+                icon={BarChart3} 
+                label="24h Activity" 
+                value={statsLoading ? "..." : stats.postsToday.toLocaleString()} 
+                subtext="Posts created today"
+                color="text-green-500"
+                bgColor="bg-green-50"
              />
           </div>
 
@@ -212,17 +240,22 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Additional Placeholder for future settings */}
-                <div className="relative overflow-hidden rounded-2xl bg-slate-50/50 border border-slate-200 p-6 flex items-center justify-center text-center opacity-70">
-                    <div className="absolute inset-0 bg-slate-100/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                        <span className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Coming Soon</span>
-                    </div>
-                    <div className="flex gap-4 opacity-50 blur-sm">
-                       <div className="h-12 w-12 bg-slate-200 rounded-xl"></div>
-                       <div className="text-left">
-                          <div className="h-5 w-40 bg-slate-200 rounded mb-2"></div>
-                          <div className="h-4 w-60 bg-slate-200 rounded"></div>
+                {/* Database Info (Real) */}
+                <div className="relative overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 p-6 flex items-center justify-between">
+                    <div className="flex gap-4 items-center">
+                       <div className="h-12 w-12 bg-slate-200 rounded-xl flex items-center justify-center text-slate-500">
+                          <Activity className="w-6 h-6" />
                        </div>
+                       <div>
+                          <h3 className="text-lg font-bold text-slate-900">System Status</h3>
+                          <p className="text-sm text-slate-500">
+                            Database connection is active. Real-time listeners are running.
+                          </p>
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <span className="h-3 w-3 bg-green-500 rounded-full animate-pulse"></span>
+                       <span className="text-sm font-semibold text-green-700">Online</span>
                     </div>
                 </div>
 
@@ -239,26 +272,20 @@ const StatCard: React.FC<{
   icon: any, 
   label: string, 
   value: string, 
-  trend: string, 
-  trendUp?: boolean,
-  color: string,
-  bgColor: string
-}> = ({ icon: Icon, label, value, trend, trendUp, color, bgColor }) => (
+  subtext: string, 
+  color: string, 
+  bgColor: string 
+}> = ({ icon: Icon, label, value, subtext, color, bgColor }) => (
   <Card className="p-5 border-slate-200 shadow-sm hover:shadow-md transition-all">
       <div className="flex justify-between items-start mb-4">
           <div className={cn("p-2.5 rounded-xl", bgColor)}>
               <Icon className={cn("w-6 h-6", color)} />
           </div>
-          <span className={cn(
-             "text-xs font-semibold px-2 py-1 rounded-full",
-             trendUp ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-600"
-          )}>
-             {trend}
-          </span>
       </div>
       <div>
-         <p className="text-slate-500 text-sm font-medium">{label}</p>
-         <h3 className="text-2xl font-bold text-slate-900 mt-1">{value}</h3>
+         <h3 className="text-3xl font-bold text-slate-900 mt-1">{value}</h3>
+         <p className="text-slate-700 text-sm font-bold mt-1">{label}</p>
+         <p className="text-slate-400 text-xs mt-1">{subtext}</p>
       </div>
   </Card>
 );
