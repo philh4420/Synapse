@@ -12,7 +12,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null;
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Allow update if user is editing their own profile OR if only modifying the friends list (for friend requests)
+      allow update: if request.auth != null && (
+        request.auth.uid == userId || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friends'])
+      );
     }
 
     match /users {

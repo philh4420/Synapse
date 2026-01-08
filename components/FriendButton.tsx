@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { 
   collection, query, where, addDoc, deleteDoc, 
-  updateDoc, doc, onSnapshot, serverTimestamp, arrayUnion, arrayRemove 
+  updateDoc, doc, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useToast } from '../context/ToastContext';
@@ -132,11 +132,23 @@ export const FriendButton: React.FC<FriendButtonProps> = ({ targetUid, className
     if (!requestId || !user) return;
     setActionLoading(true);
     try {
-      await deleteDoc(doc(db, 'friend_requests', requestId));
-      await updateDoc(doc(db, 'users', user.uid), { friends: arrayUnion(targetUid) });
-      await updateDoc(doc(db, 'users', targetUid), { friends: arrayUnion(user.uid) });
+      const batch = writeBatch(db);
 
-      await addDoc(collection(db, 'notifications'), {
+      // 1. Delete the friend request
+      const requestRef = doc(db, 'friend_requests', requestId);
+      batch.delete(requestRef);
+
+      // 2. Add targetUid to my friends list
+      const myUserRef = doc(db, 'users', user.uid);
+      batch.update(myUserRef, { friends: arrayUnion(targetUid) });
+
+      // 3. Add my uid to target's friends list
+      const theirUserRef = doc(db, 'users', targetUid);
+      batch.update(theirUserRef, { friends: arrayUnion(user.uid) });
+
+      // 4. Create Notification
+      const notifRef = doc(collection(db, 'notifications'));
+      batch.set(notifRef, {
         recipientUid: targetUid,
         sender: {
           uid: user.uid,
@@ -148,10 +160,14 @@ export const FriendButton: React.FC<FriendButtonProps> = ({ targetUid, className
         timestamp: serverTimestamp()
       });
 
+      // Commit all changes atomically
+      await batch.commit();
+
       setStatus('friends');
       toast("You are now friends", "success");
       if (onStatusChange) onStatusChange();
     } catch (e) {
+      console.error(e);
       toast("Failed to accept", "error");
     } finally {
       setActionLoading(false);
@@ -162,13 +178,18 @@ export const FriendButton: React.FC<FriendButtonProps> = ({ targetUid, className
     e.stopPropagation();
     if (!user) return;
     
-    // Note: We don't use window.confirm here to keep it UI agnostic, usually controlled by a Dialog, 
-    // but for the dropdown action, it's direct.
-    
     setActionLoading(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), { friends: arrayRemove(targetUid) });
-      await updateDoc(doc(db, 'users', targetUid), { friends: arrayRemove(user.uid) });
+      const batch = writeBatch(db);
+      
+      const myUserRef = doc(db, 'users', user.uid);
+      batch.update(myUserRef, { friends: arrayRemove(targetUid) });
+
+      const theirUserRef = doc(db, 'users', targetUid);
+      batch.update(theirUserRef, { friends: arrayRemove(user.uid) });
+
+      await batch.commit();
+
       setStatus('none');
       toast("Friend removed", "info");
       if (onStatusChange) onStatusChange();
