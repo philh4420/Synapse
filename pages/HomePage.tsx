@@ -41,6 +41,9 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  // Profile and Admin pages benefit from wider layout
+  // Feed is restricted to mimic FB Feed width
+  // Friends page handles its own responsiveness internally
   const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile';
 
   return (
@@ -61,17 +64,14 @@ export const HomePage: React.FC = () => {
         {/* Adjusted width logic: Fixed width for Feed, Fluid for others */}
         <div className={cn(
           "flex-1 w-full mx-auto py-6 transition-all duration-300 min-w-0",
-          isWidePage ? "px-2 md:px-4 max-w-[1400px]" : "max-w-[740px] lg:px-8"
+          isWidePage ? "px-2 md:px-4 max-w-[1600px]" : "max-w-[740px] lg:px-8"
         )}>
            {renderContent()}
         </div>
 
         {/* Right Sidebar (Contacts/Ads) - Fixed */}
-        {/* Hide Right Panel on 'friends' tab to give full width to the friends manager interface, similar to FB */}
-        <div className={cn(
-           "hidden flex-shrink-0 z-10",
-           activeTab === 'friends' ? 'xl:hidden' : 'lg:block w-[280px] xl:w-[360px]'
-        )}>
+        {/* Always visible on larger screens (xl+) to mimic Facebook layout without crushing content on smaller laptops */}
+        <div className="hidden xl:block w-[280px] xl:w-[360px] flex-shrink-0 z-10">
            <RightPanel />
         </div>
 
