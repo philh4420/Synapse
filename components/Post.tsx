@@ -3,7 +3,7 @@ import { Heart, MessageCircle, Share2, MoreHorizontal, Bookmark } from 'lucide-r
 import { Post as PostType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import firebase from 'firebase/app';
+import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 export const Post: React.FC<{ post: PostType }> = ({ post }) => {
@@ -15,20 +15,20 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const handleLike = async () => {
     if (!user) return;
 
-    const postRef = db.collection('posts').doc(post.id);
+    const postRef = doc(db, 'posts', post.id);
 
     try {
       if (isLiked) {
         // Unlike
-        await postRef.update({
-          likes: firebase.firestore.FieldValue.increment(-1),
-          likedByUsers: firebase.firestore.FieldValue.arrayRemove(user.uid)
+        await updateDoc(postRef, {
+          likes: increment(-1),
+          likedByUsers: arrayRemove(user.uid)
         });
       } else {
         // Like
-        await postRef.update({
-          likes: firebase.firestore.FieldValue.increment(1),
-          likedByUsers: firebase.firestore.FieldValue.arrayUnion(user.uid)
+        await updateDoc(postRef, {
+          likes: increment(1),
+          likedByUsers: arrayUnion(user.uid)
         });
       }
     } catch (error) {

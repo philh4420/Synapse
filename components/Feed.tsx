@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreatePost } from './CreatePost';
 import { Post } from './Post';
 import { Post as PostType } from '../types';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Loader2 } from 'lucide-react';
 
@@ -12,22 +13,22 @@ export const Feed: React.FC = () => {
   useEffect(() => {
     // Connect to the 'posts' collection in Firebase Firestore
     // Order by timestamp descending (newest first)
-    const unsubscribe = db.collection('posts')
-      .orderBy('timestamp', 'desc')
-      .onSnapshot((snapshot) => {
-        const postsData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            // Convert Firestore Timestamp to JavaScript Date
-            timestamp: data.timestamp?.toDate() || new Date(),
-          };
-        }) as PostType[];
-        
-        setPosts(postsData);
-        setLoading(false);
-      });
+    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Convert Firestore Timestamp to JavaScript Date
+          timestamp: data.timestamp?.toDate() || new Date(),
+        };
+      }) as PostType[];
+      
+      setPosts(postsData);
+      setLoading(false);
+    });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();

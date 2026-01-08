@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, MoreHorizontal, UserPlus } from 'lucide-react';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { UserProfile, Trend } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -14,10 +15,8 @@ export const RightPanel: React.FC = () => {
     const fetchData = async () => {
       try {
         // Fetch Trends
-        const trendsSnap = await db.collection('trending')
-          .orderBy('count', 'desc')
-          .limit(4)
-          .get();
+        const trendsQuery = query(collection(db, 'trending'), orderBy('count', 'desc'), limit(4));
+        const trendsSnap = await getDocs(trendsQuery);
         
         if (!trendsSnap.empty) {
           setTrends(trendsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Trend)));
@@ -26,7 +25,8 @@ export const RightPanel: React.FC = () => {
         }
 
         // Fetch Suggested Users
-        const usersSnap = await db.collection('users').limit(10).get();
+        const usersQuery = query(collection(db, 'users'), limit(10));
+        const usersSnap = await getDocs(usersQuery);
         
         const usersData = usersSnap.docs
           .map(doc => doc.data() as UserProfile)

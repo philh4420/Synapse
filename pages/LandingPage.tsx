@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import firebase from 'firebase/app';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  sendPasswordResetEmail, 
+  updateProfile 
+} from 'firebase/auth';
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  collection, 
+  serverTimestamp, 
+  getDocs, 
+  query, 
+  limit 
+} from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -24,8 +39,9 @@ export const LandingPage: React.FC = () => {
   useEffect(() => {
     const checkSettings = async () => {
       try {
-        const settingsSnap = await db.collection('settings').doc('site').get();
-        if (settingsSnap.exists) {
+        const docRef = doc(db, 'settings', 'site');
+        const settingsSnap = await getDoc(docRef);
+        if (settingsSnap.exists()) {
           setSignupEnabled(settingsSnap.data()?.signupEnabled);
         }
       } catch (err) {
@@ -44,10 +60,10 @@ export const LandingPage: React.FC = () => {
     try {
       if (isReset) {
         if (!email) throw new Error("Please enter your email address.");
-        await auth.sendPasswordResetEmail(email);
+        await sendPasswordResetEmail(auth, email);
         setSuccess("Password reset email sent. Please check your inbox.");
       } else if (isLogin) {
-        await auth.signInWithEmailAndPassword(email, password);
+        await signInWithEmailAndPassword(auth, email, password);
         await refreshProfile(); // Ensure profile is loaded immediately
       } else {
         if (!signupEnabled) {
@@ -55,7 +71,7 @@ export const LandingPage: React.FC = () => {
         }
 
         // Create Authentication User
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
         if (!user) throw new Error("Failed to create user");
@@ -64,22 +80,23 @@ export const LandingPage: React.FC = () => {
         const photoURL = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
 
         // Check for existing users to determine role (First user is admin)
-        const snapshot = await db.collection('users').limit(1).get();
+        const q = query(collection(db, 'users'), limit(1));
+        const snapshot = await getDocs(q);
         const role = snapshot.empty ? 'admin' : 'user';
 
         // Create User Document in Firestore with Defaults
-        await db.collection('users').doc(user.uid).set({
+        await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
           displayName: name,
           photoURL: photoURL,
           coverURL: DEFAULT_COVER_URL,
           role: role,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: serverTimestamp()
         });
 
         // Update Auth Profile
-        await user.updateProfile({
+        await updateProfile(user, {
           displayName: name,
           photoURL: photoURL
         });
