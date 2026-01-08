@@ -13,6 +13,7 @@ export const Feed: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Listen for posts in real-time
     const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -21,11 +22,15 @@ export const Feed: React.FC = () => {
         return {
           id: doc.id,
           ...data,
+          // Handle potential missing timestamps during write latency
           timestamp: data.timestamp?.toDate() || new Date(),
         };
       }) as PostType[];
       
       setPosts(postsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching posts:", error);
       setLoading(false);
     });
 
@@ -33,18 +38,20 @@ export const Feed: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full max-w-[680px] mx-auto space-y-4 px-0 md:px-4 pb-24 lg:pb-6">
+    <div className="w-full max-w-[680px] mx-auto space-y-4 px-0 md:px-0 lg:px-4 pb-24 lg:pb-6">
       
       {/* Stories Section */}
       <Stories />
       
       {/* Create Post Widget */}
-      <CreatePost />
+      <div className="mb-4">
+        <CreatePost />
+      </div>
       
       {/* Posts Feed */}
       {loading ? (
         // Skeleton Loaders
-        <div className="space-y-4 mt-4">
+        <div className="space-y-4">
           {[1, 2].map((i) => (
              <Card key={i} className="p-4 bg-white border border-slate-200 shadow-sm rounded-xl">
                 <div className="flex gap-3 mb-4">
@@ -60,10 +67,10 @@ export const Feed: React.FC = () => {
                    <Skeleton className="w-[80%] h-4 rounded-md" />
                 </div>
                 <Skeleton className="w-full h-64 rounded-xl" />
-                <div className="flex justify-between mt-4">
-                   <Skeleton className="w-20 h-8 rounded-md" />
-                   <Skeleton className="w-20 h-8 rounded-md" />
-                   <Skeleton className="w-20 h-8 rounded-md" />
+                <div className="flex justify-between mt-4 px-2">
+                   <Skeleton className="w-24 h-8 rounded-md" />
+                   <Skeleton className="w-24 h-8 rounded-md" />
+                   <Skeleton className="w-24 h-8 rounded-md" />
                 </div>
              </Card>
           ))}

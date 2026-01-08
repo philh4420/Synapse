@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, 
-  Trash2, AlertCircle, EyeOff, Send, Smile, Camera, X 
+  Trash2, AlertCircle, EyeOff, Send, Smile, Camera, X, MessageSquare 
 } from 'lucide-react';
 import { Post as PostType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -44,7 +44,18 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const isLiked = user ? post.likedByUsers?.includes(user.uid) : false;
+  // Optimistic UI state
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likes);
+
+  // Sync state with props
+  useEffect(() => {
+    if (user) {
+      setIsLiked(post.likedByUsers?.includes(user.uid) || false);
+    }
+    setLikeCount(post.likes);
+  }, [post.likedByUsers, post.likes, user]);
+
   const isAuthor = user?.uid === post.author.uid;
 
   // Real-time comments listener
@@ -66,9 +77,15 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
   const handleLike = async () => {
     if (!user) return;
+    
+    // Optimistic Update
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    setLikeCount(prev => newLikedState ? prev + 1 : prev - 1);
+
     const postRef = doc(db, 'posts', post.id);
     try {
-      if (isLiked) {
+      if (!newLikedState) {
         await updateDoc(postRef, {
           likes: increment(-1),
           likedByUsers: arrayRemove(user.uid)
@@ -81,6 +98,9 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
       }
     } catch (error) {
       console.error("Error updating like:", error);
+      // Revert optimistic update on failure
+      setIsLiked(!newLikedState);
+      setLikeCount(prev => !newLikedState ? prev + 1 : prev - 1);
     }
   };
 
@@ -88,9 +108,12 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
     e.preventDefault();
     if (!user || !commentText.trim()) return;
 
+    const tempComment = commentText;
+    setCommentText(''); // Clear input immediately
+
     try {
       await addDoc(collection(db, 'posts', post.id, 'comments'), {
-        text: commentText,
+        text: tempComment,
         author: {
           uid: user.uid,
           name: userProfile?.displayName || user.displayName || 'User',
@@ -103,9 +126,9 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
         comments: increment(1)
       });
       
-      setCommentText('');
     } catch (error) {
       console.error("Error adding comment:", error);
+      setCommentText(tempComment); // Restore text if failed
     }
   };
 
@@ -125,27 +148,43 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
     alert("Link copied to clipboard!");
   };
 
+  // Helper for timestamp formatting
+  const getTimestamp = (timestamp: any) => {
+    if (!timestamp) return 'Just now';
+    // If it's a Firestore timestamp (has toDate method)
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return formatDistanceToNow(date, { addSuffix: true })
+      .replace('about ', '')
+      .replace('less than a minute ago', 'Just now')
+      .replace(' minute ago', 'm')
+      .replace(' minutes ago', 'm')
+      .replace(' hour ago', 'h')
+      .replace(' hours ago', 'h')
+      .replace(' day ago', 'd')
+      .replace(' days ago', 'd');
+  };
+
   if (isDeleting) return null;
 
   return (
-    <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden animate-in fade-in duration-500">
+    <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden animate-in fade-in duration-300">
       
       {/* --- Header --- */}
-      <div className="p-4 pb-2 flex justify-between items-start">
-        <div className="flex gap-3">
+      <div className="p-3 pb-2 flex justify-between items-start">
+        <div className="flex gap-2.5">
            <Avatar className="h-10 w-10 cursor-pointer hover:brightness-95">
               <AvatarImage src={post.author.avatar} />
               <AvatarFallback>{post.author.name.substring(0, 2).toUpperCase()}</AvatarFallback>
            </Avatar>
-           <div className="flex flex-col">
+           <div className="flex flex-col pt-0.5">
               <span className="font-semibold text-slate-900 text-[15px] hover:underline cursor-pointer leading-tight">
                 {post.author.name}
               </span>
-              <div className="flex items-center gap-1 text-slate-500 text-xs">
+              <div className="flex items-center gap-1 text-slate-500 text-[13px]">
                  <span className="hover:underline cursor-pointer">
-                    {post.timestamp ? formatDistanceToNow(post.timestamp, { addSuffix: true }).replace('about ', '') : 'Just now'}
+                    {getTimestamp(post.timestamp)}
                  </span>
-                 <span>·</span>
+                 <span className="text-[10px] font-bold">·</span>
                  <Globe className="w-3 h-3" />
               </div>
            </div>
@@ -153,29 +192,29 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100 -mt-1 -mr-2">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100 -mr-2">
                <MoreHorizontal className="w-5 h-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 rounded-xl">
-             <DropdownMenuItem className="gap-2 cursor-pointer font-medium py-2">
-                <Share2 className="w-4 h-4" /> Save post
+          <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 shadow-xl border-slate-100">
+             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
+                <Share2 className="w-5 h-5" /> Save post
              </DropdownMenuItem>
-             <DropdownMenuSeparator />
-             <DropdownMenuItem className="gap-2 cursor-pointer font-medium py-2">
-                <EyeOff className="w-4 h-4" /> Hide post
+             <DropdownMenuSeparator className="bg-slate-100" />
+             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
+                <EyeOff className="w-5 h-5" /> Hide post
              </DropdownMenuItem>
-             <DropdownMenuItem className="gap-2 cursor-pointer font-medium py-2">
-                <AlertCircle className="w-4 h-4" /> Report post
+             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
+                <AlertCircle className="w-5 h-5" /> Report post
              </DropdownMenuItem>
              {isAuthor && (
                <>
-                 <DropdownMenuSeparator />
+                 <DropdownMenuSeparator className="bg-slate-100" />
                  <DropdownMenuItem 
                     onClick={handleDeletePost}
-                    className="gap-2 cursor-pointer font-medium py-2 text-red-600 focus:text-red-700 focus:bg-red-50"
+                    className="gap-3 cursor-pointer font-medium py-2 text-red-600 focus:text-red-700 focus:bg-red-50 rounded-lg"
                   >
-                    <Trash2 className="w-4 h-4" /> Move to trash
+                    <Trash2 className="w-5 h-5" /> Move to trash
                  </DropdownMenuItem>
                </>
              )}
@@ -184,25 +223,25 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
       </div>
 
       {/* --- Content --- */}
-      <div className="px-4 pb-3">
-         <p className="text-[15px] text-slate-900 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+      <div className="px-3 pb-3">
+         <p className="text-[15px] text-slate-900 leading-normal whitespace-pre-wrap">{post.content}</p>
       </div>
 
       {post.image && (
-        <div className="w-full bg-slate-50 border-t border-b border-slate-100 flex items-center justify-center max-h-[600px] overflow-hidden cursor-pointer">
-           <img src={post.image} alt="Post content" className="w-full h-full object-cover" />
+        <div className="w-full bg-slate-50 border-t border-b border-slate-100 flex items-center justify-center max-h-[700px] overflow-hidden cursor-pointer">
+           <img src={post.image} alt="Post content" className="w-full h-auto max-h-[700px] object-cover" />
         </div>
       )}
 
       {/* --- Stats --- */}
-      <div className="px-4 py-3 flex items-center justify-between">
+      <div className="px-4 py-2.5 flex items-center justify-between">
          <div className="flex items-center gap-1.5 cursor-pointer hover:underline decoration-slate-500">
-             {post.likes > 0 && (
-                <div className="bg-synapse-600 rounded-full p-1 flex items-center justify-center">
-                   <ThumbsUp className="w-3 h-3 text-white fill-current" />
+             {likeCount > 0 && (
+                <div className="bg-synapse-600 rounded-full p-1 flex items-center justify-center shadow-sm">
+                   <ThumbsUp className="w-2.5 h-2.5 text-white fill-current" />
                 </div>
              )}
-             <span className="text-slate-500 text-[15px]">{post.likes > 0 ? post.likes : 'Be the first to like this'}</span>
+             <span className="text-slate-500 text-[15px]">{likeCount > 0 ? likeCount : 'Be the first to like this'}</span>
          </div>
          <div className="flex items-center gap-3 text-slate-500 text-[15px]">
             {post.comments > 0 && (
@@ -224,39 +263,43 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
             variant="ghost" 
             onClick={handleLike}
             className={cn(
-              "flex-1 gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors",
-              isLiked ? "text-synapse-600" : "text-slate-500"
+              "flex-1 gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors select-none",
+              isLiked ? "text-synapse-600" : "text-slate-600"
             )}
          >
-            <ThumbsUp className={cn("w-5 h-5", isLiked && "fill-current")} />
+            <ThumbsUp className={cn("w-5 h-5 mb-0.5", isLiked && "fill-current")} />
             Like
          </Button>
 
          <Button 
             variant="ghost" 
             onClick={() => setShowComments(!showComments)}
-            className="flex-1 gap-2 font-semibold text-[15px] text-slate-500 hover:bg-slate-100 rounded-lg h-9 transition-colors"
+            className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none"
          >
-            <MessageCircle className="w-5 h-5" />
+            <MessageSquare className="w-5 h-5 mb-0.5 scale-x-[-1]" />
             Comment
          </Button>
 
          <Button 
             variant="ghost" 
             onClick={handleShare}
-            className="flex-1 gap-2 font-semibold text-[15px] text-slate-500 hover:bg-slate-100 rounded-lg h-9 transition-colors"
+            className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none"
          >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-5 h-5 mb-0.5" />
             Share
          </Button>
       </div>
 
+      <div className="px-3">
+         <Separator className="bg-slate-200" />
+      </div>
+
       {/* --- Comments Section --- */}
       {(showComments || comments.length > 0) && (
-         <div className="px-4 pb-4 border-t border-slate-200/60 pt-3">
+         <div className="px-4 pb-4 pt-3">
             
             {/* View More */}
-            {post.comments > comments.length && comments.length > 0 && (
+            {post.comments > comments.length && (
                <div className="font-semibold text-slate-500 text-sm hover:underline cursor-pointer mb-3">
                   View more comments
                </div>
@@ -266,25 +309,24 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
             <div className="space-y-3 mb-4">
                {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-2 group">
-                     <Avatar className="w-8 h-8 mt-1 cursor-pointer hover:brightness-95">
+                     <Avatar className="w-8 h-8 mt-0.5 cursor-pointer hover:brightness-95">
                         <AvatarImage src={comment.author.avatar} />
                         <AvatarFallback>{comment.author.name[0]}</AvatarFallback>
                      </Avatar>
                      <div className="flex-1 max-w-[90%]">
-                        <div className="bg-slate-100 rounded-2xl px-3 py-2 inline-block relative">
-                           <span className="font-semibold text-xs text-slate-900 block hover:underline cursor-pointer">
+                        <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2 inline-block relative">
+                           <span className="font-semibold text-[13px] text-slate-900 block hover:underline cursor-pointer">
                               {comment.author.name}
                            </span>
                            <span className="text-[15px] text-slate-900 leading-snug">
                               {comment.text}
                            </span>
-                           {/* Likes count on comment could go here absolutely positioned */}
                         </div>
-                        <div className="flex items-center gap-3 mt-0.5 ml-3 text-xs font-semibold text-slate-500">
+                        <div className="flex items-center gap-3 mt-0.5 ml-3 text-[12px] font-bold text-slate-500">
                            <span className="hover:underline cursor-pointer">Like</span>
                            <span className="hover:underline cursor-pointer">Reply</span>
-                           <span className="font-normal">
-                             {comment.timestamp ? formatDistanceToNow(comment.timestamp.toDate(), { addSuffix: true }).replace('about ', '') : 'Just now'}
+                           <span className="font-normal text-slate-400">
+                             {getTimestamp(comment.timestamp)}
                            </span>
                         </div>
                      </div>
@@ -298,7 +340,7 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
                   <AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} />
                   <AvatarFallback>ME</AvatarFallback>
                </Avatar>
-               <form onSubmit={handleComment} className="flex-1 relative bg-slate-100 rounded-2xl flex items-center">
+               <form onSubmit={handleComment} className="flex-1 relative bg-[#F0F2F5] rounded-2xl flex items-center transition-all focus-within:ring-1 focus-within:ring-slate-300">
                   <input 
                      type="text"
                      value={commentText}
@@ -306,13 +348,13 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
                      placeholder="Write a comment..."
                      className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] placeholder-slate-500 text-slate-900 rounded-2xl"
                   />
-                  <div className="flex items-center gap-1 pr-2 text-slate-500">
+                  <div className="flex items-center gap-2 pr-3 text-slate-500">
                      <Smile className="w-4 h-4 hover:text-slate-700 cursor-pointer" />
                      <Camera className="w-4 h-4 hover:text-slate-700 cursor-pointer" />
                      <button 
                         type="submit" 
                         disabled={!commentText.trim()}
-                        className="p-1 rounded-full text-synapse-600 hover:bg-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent transition-colors"
+                        className="p-1 rounded-full text-synapse-600 hover:bg-slate-200 disabled:text-transparent disabled:hover:bg-transparent transition-colors"
                      >
                         <Send className="w-4 h-4" />
                      </button>
