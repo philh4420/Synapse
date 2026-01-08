@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreatePost } from './CreatePost';
+import { Stories } from './Stories';
 import { Post } from './Post';
 import { Post as PostType } from '../types';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -36,6 +37,7 @@ export const Feed: React.FC = () => {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6 px-4 pb-24 lg:pb-6">
+      <Stories />
       <CreatePost />
       
       {loading ? (

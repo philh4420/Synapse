@@ -31,11 +31,18 @@ service cloud.firestore {
 
       // Allow updates if:
       // 1. User is the author (can edit content, etc.)
-      // 2. OR User is just updating likes/likedByUsers (liking/unliking)
+      // 2. OR User is just updating likes/likedByUsers (liking/unliking) or comments count
       allow update: if request.auth != null && (
         resource.data.author.uid == request.auth.uid || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedByUsers'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedByUsers', 'comments'])
       );
+
+      // Subcollection for comments
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.author.uid == request.auth.uid;
+        allow update, delete: if request.auth != null && resource.data.author.uid == request.auth.uid;
+      }
     }
     
     match /posts {
@@ -51,7 +58,6 @@ service cloud.firestore {
     // Rules for 'trending'
     match /trending/{trendId} {
       allow read: if request.auth != null;
-      // Write logic would go here if needed
     }
     
     match /trending {
