@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, 
-  Trash2, Send, X, MessageSquare, Users, Lock, Edit3, Camera, Loader2
+  Trash2, Send, X, MessageSquare, Users, Lock, Edit3, Camera, Loader2, Smile, Gift, Search
 } from 'lucide-react';
 import { Post as PostType, ReactionType, Comment } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,8 +11,8 @@ import {
   doc, updateDoc, increment, arrayUnion, arrayRemove, 
   collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, deleteField 
 } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import { uploadToCloudinary } from '../utils/upload'; // Reusing your existing upload util
+import { db, GIPHY_API_KEY } from '../firebaseConfig';
+import { uploadToCloudinary } from '../utils/upload';
 import { Card } from './ui/Card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/Avatar';
 import { Button } from './ui/Button';
@@ -24,6 +24,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from './ui/DropdownMenu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./ui/Popover";
 import { cn } from '../lib/utils';
 
 // --- Assets ---
@@ -36,6 +41,8 @@ const REACTIONS: { type: ReactionType; emoji: string; label: string; color: stri
   { type: 'sad', emoji: '😢', label: 'Sad', color: 'text-yellow-500' },
   { type: 'angry', emoji: '😡', label: 'Angry', color: 'text-orange-600' },
 ];
+
+const EMOJIS = ['🙂', '😀', '😂', '😍', '🥰', '😎', '😭', '😡', '👍', '👎', '🎉', '🔥', '❤️', '💔', '✨', '🎁', '👋', '🙏', '🤔', '🙄', '😴', '🤮', '🤯', '🥳'];
 
 export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const { user, userProfile } = useAuth();
@@ -52,7 +59,16 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const [isPostingComment, setIsPostingComment] = useState(false);
   const commentInputRef = useRef<HTMLInputElement>(null);
   
-  // Edit Mode
+  // Comment Features (Gif/Emoji)
+  const [gifSearch, setGifSearch] = useState('');
+  const [gifs, setGifs] = useState<any[]>([]);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+
+  // Comment Editing
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+
+  // Post Edit Mode
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [editImages, setEditImages] = useState<string[]>(post.images || (post.image ? [post.image] : []));
@@ -102,35 +118,31 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
     
     // Optimistic Update
     const oldReaction = currentReaction;
-    const newReaction = oldReaction === type ? null : type; // Toggle off if same
+    const newReaction = oldReaction === type ? null : type; 
     setCurrentReaction(newReaction);
 
     const postRef = doc(db, 'posts', post.id);
     try {
-      // 1. Handle Legacy "likes" counter and array
       if (oldReaction && !newReaction) {
-        // Removing reaction
         await updateDoc(postRef, { 
           likes: increment(-1), 
           likedByUsers: arrayRemove(user.uid),
-          [`reactions.${user.uid}`]: deleteField() // Remove from map
+          [`reactions.${user.uid}`]: deleteField() 
         } as any);
       } else if (!oldReaction && newReaction) {
-        // Adding new reaction
         await updateDoc(postRef, { 
           likes: increment(1), 
           likedByUsers: arrayUnion(user.uid),
           [`reactions.${user.uid}`]: newReaction 
         });
       } else if (oldReaction && newReaction && oldReaction !== newReaction) {
-        // Changing reaction type (count stays same)
         await updateDoc(postRef, { 
           [`reactions.${user.uid}`]: newReaction 
         });
       }
     } catch (error) {
       console.error("Error updating reaction:", error);
-      setCurrentReaction(oldReaction); // Revert
+      setCurrentReaction(oldReaction);
       toast("Failed to react", "error");
     }
   };
@@ -140,6 +152,45 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
       const file = e.target.files[0];
       setCommentImage(file);
       setCommentImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleGifSearch = async (term: string) => {
+    setGifSearch(term);
+    if (!GIPHY_API_KEY) return;
+    
+    const endpoint = term 
+      ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${term}&limit=12`
+      : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=12`;
+
+    try {
+      const res = await fetch(endpoint);
+      const data = await res.json();
+      setGifs(data.data);
+    } catch (e) {
+      console.error("Giphy error", e);
+    }
+  };
+
+  const sendGifComment = async (gifUrl: string) => {
+    if (!user) return;
+    setShowGifPicker(false);
+    
+    try {
+       await addDoc(collection(db, 'posts', post.id, 'comments'), {
+        text: '',
+        gif: gifUrl,
+        author: {
+          uid: user.uid,
+          name: userProfile?.displayName || user.displayName || 'User',
+          avatar: userProfile?.photoURL || user.photoURL || ''
+        },
+        timestamp: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'posts', post.id), { comments: increment(1) });
+      toast("GIF posted", "success");
+    } catch (error) {
+       toast("Failed to post GIF", "error");
     }
   };
 
@@ -167,7 +218,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
       await updateDoc(doc(db, 'posts', post.id), { comments: increment(1) });
       
-      // Reset
       setCommentText('');
       setCommentImage(null);
       setCommentImagePreview(null);
@@ -177,6 +227,31 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
       toast("Failed to post comment", "error");
     } finally {
       setIsPostingComment(false);
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+      if (!editCommentText.trim()) return;
+      try {
+        await updateDoc(doc(db, 'posts', post.id, 'comments', commentId), {
+          text: editCommentText
+        });
+        setEditingCommentId(null);
+        setEditCommentText('');
+        toast("Comment updated", "success");
+      } catch (error) {
+        toast("Failed to edit comment", "error");
+      }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("Delete this comment?")) return;
+    try {
+       await deleteDoc(doc(db, 'posts', post.id, 'comments', commentId));
+       await updateDoc(doc(db, 'posts', post.id), { comments: increment(-1) });
+       toast("Comment deleted", "success");
+    } catch (error) {
+       toast("Failed to delete comment", "error");
     }
   };
 
@@ -220,7 +295,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
   const formatTextWithLinks = (text: string) => {
     if (!text) return null;
-    // Regex to detect URLs
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, i) => {
       if (part.match(urlRegex)) {
@@ -263,7 +337,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
        );
     }
 
-    // Modern Facebook-style Collage Layouts
     const count = displayImages.length;
     
     if (count === 1) {
@@ -429,7 +502,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
             <div className="flex items-center gap-1.5 cursor-pointer hover:underline decoration-slate-500">
                 {(post.likes > 0 || Object.keys(post.reactions || {}).length > 0) && (
                    <div className="flex -space-x-1">
-                      {/* Only show 'Like' icon if no other reactions for now to keep it simple, or map the reaction types present */}
                       <div className="bg-synapse-600 rounded-full p-1 z-20 border border-white">
                          <ThumbsUp className="w-2 h-2 text-white fill-current" />
                       </div>
@@ -449,7 +521,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
             
             {/* Reaction Button Container */}
             <div className="group relative flex-1">
-              {/* Hover Dock */}
               <div className="absolute -top-12 left-0 hidden group-hover:flex animate-in fade-in slide-in-from-bottom-2 duration-200 bg-white border border-slate-200 shadow-xl rounded-full p-1 gap-1 z-50">
                 {REACTIONS.map((r) => (
                    <button 
@@ -463,10 +534,9 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
                 ))}
               </div>
 
-              {/* Main Button */}
               <Button 
                 variant="ghost" 
-                onClick={() => handleReaction(currentReaction === 'like' ? 'like' : 'like')} // Simple toggle behavior for click, complex for hover
+                onClick={() => handleReaction(currentReaction === 'like' ? 'like' : 'like')}
                 className={cn(
                    "w-full gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors select-none",
                    currentReaction ? REACTIONS.find(r => r.type === currentReaction)?.color || "text-synapse-600" : "text-slate-600"
@@ -501,26 +571,66 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
             <div className="px-4 pb-4 pt-3">
                 <div className="space-y-4 mb-4">
                   {comments.map((comment) => (
-                      <div key={comment.id} className="flex gap-2 group items-start">
+                      <div key={comment.id} className="flex gap-2 group items-start relative">
                         <Avatar className="w-8 h-8 mt-0.5 cursor-pointer hover:brightness-95">
                            <AvatarImage src={comment.author.avatar} />
                            <AvatarFallback>{comment.author.name[0]}</AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 max-w-[90%]">
-                            <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2 inline-block relative">
-                              <span className="font-semibold text-[13px] text-slate-900 block hover:underline cursor-pointer">{comment.author.name}</span>
-                              {comment.text && <span className="text-[15px] text-slate-900 leading-snug break-words">{formatTextWithLinks(comment.text)}</span>}
-                            </div>
-                            {comment.image && (
-                              <div className="mt-2 rounded-xl overflow-hidden max-w-[200px] border border-slate-200">
-                                 <img src={comment.image} className="w-full h-auto" />
+                        
+                        <div className="flex-1 max-w-[90%] group/comment">
+                            {editingCommentId === comment.id ? (
+                              <div className="w-full">
+                                 <input
+                                   className="w-full bg-[#F0F2F5] rounded-xl px-3 py-2 text-[15px] focus:outline-none focus:ring-1 focus:ring-synapse-500 mb-1"
+                                   value={editCommentText}
+                                   onChange={(e) => setEditCommentText(e.target.value)}
+                                   autoFocus
+                                   onKeyDown={(e) => {
+                                     if (e.key === 'Enter') handleEditComment(comment.id);
+                                     if (e.key === 'Escape') setEditingCommentId(null);
+                                   }}
+                                 />
+                                 <div className="text-xs text-slate-500">Press Esc to cancel, Enter to save</div>
                               </div>
+                            ) : (
+                              <>
+                                <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2 inline-block relative pr-8 min-w-[120px]">
+                                  <span className="font-semibold text-[13px] text-slate-900 block hover:underline cursor-pointer">{comment.author.name}</span>
+                                  {comment.text && <span className="text-[15px] text-slate-900 leading-snug break-words">{formatTextWithLinks(comment.text)}</span>}
+                                  
+                                  {/* Edit/Delete Menu */}
+                                  {(user?.uid === comment.author.uid) && (
+                                     <div className="absolute top-2 right-2 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <button className="p-1 hover:bg-slate-200 rounded-full"><MoreHorizontal className="w-4 h-4 text-slate-500" /></button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="start">
+                                            <DropdownMenuItem onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.text); }}>Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDeleteComment(comment.id)} className="text-red-600">Delete</DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                     </div>
+                                  )}
+                                </div>
+                                {comment.image && (
+                                  <div className="mt-2 rounded-xl overflow-hidden max-w-[200px] border border-slate-200">
+                                    <img src={comment.image} className="w-full h-auto" />
+                                  </div>
+                                )}
+                                {comment.gif && (
+                                   <div className="mt-2 rounded-xl overflow-hidden max-w-[200px] border border-slate-200">
+                                      <img src={comment.gif} className="w-full h-auto" />
+                                      <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] px-1 rounded">GIF</div>
+                                   </div>
+                                )}
+                                <div className="flex gap-4 px-2 mt-0.5">
+                                  <span className="text-xs font-bold text-slate-500 cursor-pointer hover:underline">Like</span>
+                                  <span className="text-xs font-bold text-slate-500 cursor-pointer hover:underline">Reply</span>
+                                  <span className="text-xs text-slate-400">{comment.timestamp ? formatDistanceToNow(comment.timestamp.toDate()) : 'Just now'}</span>
+                                </div>
+                              </>
                             )}
-                            <div className="flex gap-4 px-2 mt-0.5">
-                               <span className="text-xs font-bold text-slate-500 cursor-pointer hover:underline">Like</span>
-                               <span className="text-xs font-bold text-slate-500 cursor-pointer hover:underline">Reply</span>
-                               <span className="text-xs text-slate-400">{comment.timestamp ? formatDistanceToNow(comment.timestamp.toDate()) : 'Just now'}</span>
-                            </div>
                         </div>
                       </div>
                   ))}
@@ -529,16 +639,72 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
                 {/* Comment Input Area */}
                 <div className="flex gap-2 items-start pt-1">
                   <Avatar className="w-8 h-8 mt-1"><AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} /><AvatarFallback>ME</AvatarFallback></Avatar>
-                  <form onSubmit={handleComment} className="flex-1 relative">
+                  <form onSubmit={handleComment} className="flex-1 relative z-10">
                       <div className="relative bg-[#F0F2F5] rounded-2xl flex items-center transition-all focus-within:ring-1 focus-within:ring-slate-300">
                         <input 
                            value={commentText} 
                            onChange={(e) => setCommentText(e.target.value)} 
                            placeholder="Write a comment..." 
-                           className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] text-slate-900 rounded-2xl" 
+                           className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] text-slate-900 rounded-2xl placeholder-slate-500" 
                            disabled={isPostingComment}
                         />
                         <div className="flex items-center gap-1 pr-2">
+                           {/* Emoji Picker */}
+                           <Popover>
+                             <PopoverTrigger asChild>
+                                <button type="button" className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500">
+                                  <Smile className="w-4 h-4" />
+                                </button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-64 p-2" align="end" side="top">
+                                <div className="grid grid-cols-6 gap-1">
+                                  {EMOJIS.map(emoji => (
+                                    <button 
+                                      key={emoji} 
+                                      type="button"
+                                      className="text-xl p-1 hover:bg-slate-100 rounded"
+                                      onClick={() => setCommentText(prev => prev + emoji)}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                             </PopoverContent>
+                           </Popover>
+
+                           {/* GIF Picker */}
+                           <Popover open={showGifPicker} onOpenChange={(open) => { setShowGifPicker(open); if(open) handleGifSearch(''); }}>
+                             <PopoverTrigger asChild>
+                                <button type="button" className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500">
+                                  <Gift className="w-4 h-4" />
+                                </button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-72 p-0 overflow-hidden" align="end" side="top">
+                                <div className="p-2 border-b border-slate-100">
+                                  <div className="relative">
+                                    <Search className="absolute left-2 top-1.5 w-4 h-4 text-slate-400" />
+                                    <input 
+                                      className="w-full bg-slate-100 rounded-full pl-8 pr-4 py-1 text-sm focus:outline-none" 
+                                      placeholder="Search GIFs"
+                                      value={gifSearch}
+                                      onChange={(e) => handleGifSearch(e.target.value)}
+                                      autoFocus
+                                    />
+                                  </div>
+                                </div>
+                                <div className="h-64 overflow-y-auto p-1 grid grid-cols-2 gap-1">
+                                   {gifs.map((g: any) => (
+                                      <img 
+                                        key={g.id} 
+                                        src={g.images.fixed_height_small.url} 
+                                        className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-80"
+                                        onClick={() => sendGifComment(g.images.fixed_height.url)}
+                                      />
+                                   ))}
+                                </div>
+                             </PopoverContent>
+                           </Popover>
+
                            <input type="file" ref={commentInputRef} onChange={handleCommentFileSelect} className="hidden" accept="image/*" />
                            <button type="button" onClick={() => commentInputRef.current?.click()} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500">
                               <Camera className="w-4 h-4" />

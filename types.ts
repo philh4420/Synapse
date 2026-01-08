@@ -57,6 +57,7 @@ export interface Comment {
   id: string;
   text: string;
   image?: string; // Image in comment
+  gif?: string; // GIF in comment
   author: {
     uid: string;
     name: string;
