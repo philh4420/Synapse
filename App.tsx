@@ -1,9 +1,10 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -18,6 +19,14 @@ const App: React.FC = () => {
   }
 
   return user ? <HomePage /> : <LandingPage />;
+}
+
+const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
 };
 
 export default App;

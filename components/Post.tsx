@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, 
-  Trash2, AlertCircle, EyeOff, Send, Smile, Camera, X, MessageSquare, Users, Lock
+  Trash2, AlertCircle, EyeOff, Send, Smile, Camera, X, MessageSquare, Users, Lock, Edit3, Save
 } from 'lucide-react';
 import { Post as PostType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { 
   doc, updateDoc, increment, arrayUnion, arrayRemove, 
   collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc 
@@ -37,17 +38,26 @@ interface Comment {
 
 export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const { user, userProfile } = useAuth();
+  const { toast } = useToast();
   
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
+  
+  // Edit State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [editImages, setEditImages] = useState<string[]>(post.images || (post.image ? [post.image] : []));
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Optimistic UI state
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
 
-  const displayImages = post.images || (post.image ? [post.image] : []);
+  // Determine current images to show (Edit mode vs View mode)
+  const displayImages = isEditing ? editImages : (post.images || (post.image ? [post.image] : []));
 
   useEffect(() => {
     if (user) {
@@ -85,6 +95,7 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
       console.error("Error updating like:", error);
       setIsLiked(!newLikedState);
       setLikeCount(prev => !newLikedState ? prev + 1 : prev - 1);
+      toast("Failed to update like", "error");
     }
   };
 
@@ -105,19 +116,51 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
         timestamp: serverTimestamp()
       });
       await updateDoc(doc(db, 'posts', post.id), { comments: increment(1) });
+      toast("Comment posted", "success");
     } catch (error) {
       console.error("Error adding comment:", error);
       setCommentText(tempComment);
+      toast("Failed to post comment", "error");
     }
   };
 
+  const handleUpdatePost = async () => {
+    if (!editContent.trim() && editImages.length === 0 && !post.gif) {
+       toast("Post cannot be empty", "error");
+       return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'posts', post.id), {
+        content: editContent,
+        images: editImages,
+        image: editImages.length > 0 ? editImages[0] : null // Keep legacy support
+      });
+      setIsEditing(false);
+      toast("Post updated successfully", "success");
+    } catch (error) {
+      console.error("Error updating post:", error);
+      toast("Failed to update post", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setEditImages(prev => prev.filter((_, i) => i !== indexToRemove));
+  };
+
   const handleDeletePost = async () => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm("Are you sure you want to delete this post? This cannot be undone.")) return;
+    
     setIsDeleting(true);
     try {
       await deleteDoc(doc(db, 'posts', post.id));
+      toast("Post deleted", "success");
     } catch (error) {
       console.error("Error deleting post:", error);
+      toast("Failed to delete post", "error");
       setIsDeleting(false);
     }
   };
@@ -138,6 +181,28 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
   // --- Photo Grid Layout Logic ---
   const renderPhotoGrid = () => {
+    if (displayImages.length === 0) return null;
+
+    if (isEditing) {
+       // Edit Mode: Show grid of editable images
+       return (
+          <div className="p-3 grid grid-cols-2 gap-2">
+             {displayImages.map((img, idx) => (
+                <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200">
+                   <img src={img} className="w-full h-32 object-cover" />
+                   <button 
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 bg-white rounded-full p-1 shadow-md hover:bg-red-50 text-slate-500 hover:text-red-500 transition-colors"
+                   >
+                      <X className="w-4 h-4" />
+                   </button>
+                </div>
+             ))}
+          </div>
+       );
+    }
+
+    // View Mode Layouts
     if (displayImages.length === 1) {
       return (
          <div className="w-full bg-slate-50 border-t border-b border-slate-100 flex items-center justify-center max-h-[700px] overflow-hidden cursor-pointer">
@@ -219,104 +284,138 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
               </div>
            </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100 -mr-2">
-               <MoreHorizontal className="w-5 h-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 shadow-xl border-slate-100">
-             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg"><Share2 className="w-5 h-5" /> Save post</DropdownMenuItem>
-             <DropdownMenuSeparator className="bg-slate-100" />
-             {isAuthor && (
-               <DropdownMenuItem onClick={handleDeletePost} className="gap-3 cursor-pointer font-medium py-2 text-red-600 rounded-lg">
-                 <Trash2 className="w-5 h-5" /> Move to trash
-               </DropdownMenuItem>
-             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        
+        {/* Dropdown Menu - Only if not editing */}
+        {!isEditing && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100 -mr-2">
+                <MoreHorizontal className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 shadow-xl border-slate-100">
+              <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg"><Share2 className="w-5 h-5" /> Save post</DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-slate-100" />
+              {isAuthor && (
+                <>
+                  <DropdownMenuItem onClick={() => { setIsEditing(true); setEditContent(post.content); setEditImages(post.images || (post.image ? [post.image] : [])); }} className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
+                    <Edit3 className="w-5 h-5" /> Edit post
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDeletePost} className="gap-3 cursor-pointer font-medium py-2 text-red-600 rounded-lg">
+                    <Trash2 className="w-5 h-5" /> Move to trash
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      {/* --- Content --- */}
-      {post.background && !displayImages.length && !post.gif ? (
-         // Background Post
-         <div className={`w-full min-h-[350px] flex items-center justify-center p-8 text-center ${post.background}`}>
-            <p className="whitespace-pre-wrap">{post.content}</p>
+      {/* --- Content (View vs Edit) --- */}
+      {isEditing ? (
+         <div className="px-3 pb-3">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full min-h-[100px] text-[15px] resize-none outline-none border border-slate-200 focus:ring-1 focus:ring-synapse-500 p-3 bg-slate-50 rounded-lg text-slate-900"
+              placeholder="What's on your mind?"
+            />
          </div>
       ) : (
-         // Standard Post
-         <div className="px-3 pb-3">
-            <p className="text-[15px] text-slate-900 leading-normal whitespace-pre-wrap">{post.content}</p>
-         </div>
+         post.background && !displayImages.length && !post.gif ? (
+           // Background Post
+           <div className={`w-full min-h-[350px] flex items-center justify-center p-8 text-center ${post.background}`}>
+              <p className="whitespace-pre-wrap">{post.content}</p>
+           </div>
+         ) : (
+           // Standard Post
+           <div className="px-3 pb-3">
+              <p className="text-[15px] text-slate-900 leading-normal whitespace-pre-wrap">{post.content}</p>
+           </div>
+         )
       )}
 
       {/* --- Images / GIF --- */}
       {renderPhotoGrid()}
       
-      {post.gif && (
+      {post.gif && !isEditing && (
         <div className="w-full bg-slate-50 border-t border-b border-slate-100">
            <img src={post.gif} className="w-full h-auto object-cover" />
         </div>
       )}
 
+      {/* --- Edit Mode Actions --- */}
+      {isEditing && (
+         <div className="px-3 pb-3 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
+            <Button onClick={handleUpdatePost} disabled={isSaving} className="bg-synapse-600 hover:bg-synapse-700 text-white">
+               {isSaving ? "Saving..." : "Save"}
+            </Button>
+         </div>
+      )}
+
       {/* --- Stats --- */}
-      <div className="px-4 py-2.5 flex items-center justify-between">
-         <div className="flex items-center gap-1.5 cursor-pointer hover:underline decoration-slate-500">
-             {likeCount > 0 && (
-                <div className="bg-synapse-600 rounded-full p-1 flex items-center justify-center shadow-sm">
-                   <ThumbsUp className="w-2.5 h-2.5 text-white fill-current" />
-                </div>
-             )}
-             <span className="text-slate-500 text-[15px]">{likeCount > 0 ? likeCount : 'Be the first to like this'}</span>
-         </div>
-         <div className="flex items-center gap-3 text-slate-500 text-[15px]">
-            {post.comments > 0 && <span onClick={() => setShowComments(true)} className="hover:underline cursor-pointer">{post.comments} comments</span>}
-         </div>
-      </div>
+      {!isEditing && (
+        <>
+          <div className="px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 cursor-pointer hover:underline decoration-slate-500">
+                {likeCount > 0 && (
+                    <div className="bg-synapse-600 rounded-full p-1 flex items-center justify-center shadow-sm">
+                      <ThumbsUp className="w-2.5 h-2.5 text-white fill-current" />
+                    </div>
+                )}
+                <span className="text-slate-500 text-[15px]">{likeCount > 0 ? likeCount : 'Be the first to like this'}</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-500 text-[15px]">
+                {post.comments > 0 && <span onClick={() => setShowComments(true)} className="hover:underline cursor-pointer">{post.comments} comments</span>}
+            </div>
+          </div>
 
-      <div className="px-3"><Separator className="bg-slate-200" /></div>
+          <div className="px-3"><Separator className="bg-slate-200" /></div>
 
-      {/* --- Actions --- */}
-      <div className="px-2 py-1 flex items-center justify-between">
-         <Button variant="ghost" onClick={handleLike} className={cn("flex-1 gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors select-none", isLiked ? "text-synapse-600" : "text-slate-600")}>
-            <ThumbsUp className={cn("w-5 h-5 mb-0.5", isLiked && "fill-current")} /> Like
-         </Button>
-         <Button variant="ghost" onClick={() => setShowComments(!showComments)} className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none">
-            <MessageSquare className="w-5 h-5 mb-0.5 scale-x-[-1]" /> Comment
-         </Button>
-         <Button variant="ghost" className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none">
-            <Share2 className="w-5 h-5 mb-0.5" /> Share
-         </Button>
-      </div>
+          {/* --- Actions --- */}
+          <div className="px-2 py-1 flex items-center justify-between">
+            <Button variant="ghost" onClick={handleLike} className={cn("flex-1 gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors select-none", isLiked ? "text-synapse-600" : "text-slate-600")}>
+                <ThumbsUp className={cn("w-5 h-5 mb-0.5", isLiked && "fill-current")} /> Like
+            </Button>
+            <Button variant="ghost" onClick={() => setShowComments(!showComments)} className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none">
+                <MessageSquare className="w-5 h-5 mb-0.5 scale-x-[-1]" /> Comment
+            </Button>
+            <Button variant="ghost" className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none">
+                <Share2 className="w-5 h-5 mb-0.5" /> Share
+            </Button>
+          </div>
 
-      <div className="px-3"><Separator className="bg-slate-200" /></div>
+          <div className="px-3"><Separator className="bg-slate-200" /></div>
 
-      {/* --- Comments --- */}
-      {(showComments || comments.length > 0) && (
-         <div className="px-4 pb-4 pt-3">
-            <div className="space-y-3 mb-4">
-               {comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-2 group">
-                     <Avatar className="w-8 h-8 mt-0.5"><AvatarImage src={comment.author.avatar} /><AvatarFallback>{comment.author.name[0]}</AvatarFallback></Avatar>
-                     <div className="flex-1 max-w-[90%]">
-                        <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2 inline-block relative">
-                           <span className="font-semibold text-[13px] text-slate-900 block">{comment.author.name}</span>
-                           <span className="text-[15px] text-slate-900 leading-snug">{comment.text}</span>
+          {/* --- Comments --- */}
+          {(showComments || comments.length > 0) && (
+            <div className="px-4 pb-4 pt-3">
+                <div className="space-y-3 mb-4">
+                  {comments.map((comment) => (
+                      <div key={comment.id} className="flex gap-2 group">
+                        <Avatar className="w-8 h-8 mt-0.5"><AvatarImage src={comment.author.avatar} /><AvatarFallback>{comment.author.name[0]}</AvatarFallback></Avatar>
+                        <div className="flex-1 max-w-[90%]">
+                            <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2 inline-block relative">
+                              <span className="font-semibold text-[13px] text-slate-900 block">{comment.author.name}</span>
+                              <span className="text-[15px] text-slate-900 leading-snug">{comment.text}</span>
+                            </div>
                         </div>
-                     </div>
-                  </div>
-               ))}
+                      </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 items-start pt-1">
+                  <Avatar className="w-8 h-8 mt-1"><AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} /><AvatarFallback>ME</AvatarFallback></Avatar>
+                  <form onSubmit={handleComment} className="flex-1 relative bg-[#F0F2F5] rounded-2xl flex items-center transition-all focus-within:ring-1 focus-within:ring-slate-300">
+                      <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Write a comment..." className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] text-slate-900 rounded-2xl" />
+                      <div className="flex items-center gap-2 pr-3 text-slate-500">
+                        <button type="submit" disabled={!commentText.trim()} className="p-1 rounded-full text-synapse-600 hover:bg-slate-200 disabled:text-transparent"><Send className="w-4 h-4" /></button>
+                      </div>
+                  </form>
+                </div>
             </div>
-            <div className="flex gap-2 items-start pt-1">
-               <Avatar className="w-8 h-8 mt-1"><AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} /><AvatarFallback>ME</AvatarFallback></Avatar>
-               <form onSubmit={handleComment} className="flex-1 relative bg-[#F0F2F5] rounded-2xl flex items-center transition-all focus-within:ring-1 focus-within:ring-slate-300">
-                  <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Write a comment..." className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] text-slate-900 rounded-2xl" />
-                  <div className="flex items-center gap-2 pr-3 text-slate-500">
-                     <button type="submit" disabled={!commentText.trim()} className="p-1 rounded-full text-synapse-600 hover:bg-slate-200 disabled:text-transparent"><Send className="w-4 h-4" /></button>
-                  </div>
-               </form>
-            </div>
-         </div>
+          )}
+        </>
       )}
     </Card>
   );
