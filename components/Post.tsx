@@ -10,7 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { 
   doc, updateDoc, increment, arrayUnion, arrayRemove, 
-  collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, deleteField 
+  collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, deleteField,
+  writeBatch, getDocs 
 } from 'firebase/firestore';
 import { db, GIPHY_API_KEY } from '../firebaseConfig';
 import { uploadToCloudinary } from '../utils/upload';
@@ -376,7 +377,25 @@ export const Post: React.FC<{ post: PostType }> = ({ post: initialPost }) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'posts', currentPost.id));
+      // Use batch to delete comments and post atomicaly (cascade delete)
+      const batch = writeBatch(db);
+      
+      // 1. Get all comments
+      const commentsRef = collection(db, 'posts', currentPost.id, 'comments');
+      const commentsSnapshot = await getDocs(commentsRef);
+      
+      // 2. Queue comment deletes
+      commentsSnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      
+      // 3. Queue post delete
+      const postRef = doc(db, 'posts', currentPost.id);
+      batch.delete(postRef);
+      
+      // 4. Commit batch
+      await batch.commit();
+
       toast("Post deleted", "success");
     } catch (error) {
       console.error("Error deleting post:", error);

@@ -40,7 +40,11 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null && request.resource.data.author.uid == request.auth.uid;
-        allow delete: if request.auth != null && resource.data.author.uid == request.auth.uid;
+        // Allow delete if user is comment author OR post author
+        allow delete: if request.auth != null && (
+          resource.data.author.uid == request.auth.uid || 
+          get(/databases/$(database)/documents/posts/$(postId)).data.author.uid == request.auth.uid
+        );
         // Allow update if author OR if only updating likes/likedByUsers
         allow update: if request.auth != null && (
           resource.data.author.uid == request.auth.uid ||
