@@ -37,8 +37,16 @@ export interface Post {
   likes: number;
   comments: number;
   shares: number;
-  image?: string;
+  image?: string; // Legacy support
+  images?: string[]; // Multiple images
   likedByUsers: string[];
+  
+  // New Features
+  background?: string; // CSS gradient class
+  feeling?: string; // e.g., "😊 feeling happy"
+  location?: string; // e.g., "at New York City"
+  taggedUsers?: string[]; // Array of display names
+  gif?: string; // GIF URL
 }
 
 export interface Story {

@@ -38,7 +38,6 @@ interface Comment {
 export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const { user, userProfile } = useAuth();
   
-  // State
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
@@ -48,7 +47,8 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
 
-  // Sync state with props
+  const displayImages = post.images || (post.image ? [post.image] : []);
+
   useEffect(() => {
     if (user) {
       setIsLiked(post.likedByUsers?.includes(user.uid) || false);
@@ -58,18 +58,11 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
   const isAuthor = user?.uid === post.author.uid;
 
-  // Real-time comments listener
   useEffect(() => {
     if (showComments) {
-      const q = query(
-        collection(db, 'posts', post.id, 'comments'), 
-        orderBy('timestamp', 'asc')
-      );
+      const q = query(collection(db, 'posts', post.id, 'comments'), orderBy('timestamp', 'asc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setComments(snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Comment[]);
+        setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[]);
       });
       return () => unsubscribe();
     }
@@ -77,8 +70,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
 
   const handleLike = async () => {
     if (!user) return;
-    
-    // Optimistic Update
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     setLikeCount(prev => newLikedState ? prev + 1 : prev - 1);
@@ -86,19 +77,12 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
     const postRef = doc(db, 'posts', post.id);
     try {
       if (!newLikedState) {
-        await updateDoc(postRef, {
-          likes: increment(-1),
-          likedByUsers: arrayRemove(user.uid)
-        });
+        await updateDoc(postRef, { likes: increment(-1), likedByUsers: arrayRemove(user.uid) });
       } else {
-        await updateDoc(postRef, {
-          likes: increment(1),
-          likedByUsers: arrayUnion(user.uid)
-        });
+        await updateDoc(postRef, { likes: increment(1), likedByUsers: arrayUnion(user.uid) });
       }
     } catch (error) {
       console.error("Error updating like:", error);
-      // Revert optimistic update on failure
       setIsLiked(!newLikedState);
       setLikeCount(prev => !newLikedState ? prev + 1 : prev - 1);
     }
@@ -107,9 +91,8 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !commentText.trim()) return;
-
     const tempComment = commentText;
-    setCommentText(''); // Clear input immediately
+    setCommentText('');
 
     try {
       await addDoc(collection(db, 'posts', post.id, 'comments'), {
@@ -121,14 +104,10 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
         },
         timestamp: serverTimestamp()
       });
-      
-      await updateDoc(doc(db, 'posts', post.id), {
-        comments: increment(1)
-      });
-      
+      await updateDoc(doc(db, 'posts', post.id), { comments: increment(1) });
     } catch (error) {
       console.error("Error adding comment:", error);
-      setCommentText(tempComment); // Restore text if failed
+      setCommentText(tempComment);
     }
   };
 
@@ -143,25 +122,60 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
     }
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    alert("Link copied to clipboard!");
-  };
-
-  // Helper for timestamp formatting
   const getTimestamp = (timestamp: any) => {
     if (!timestamp) return 'Just now';
-    // If it's a Firestore timestamp (has toDate method)
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return formatDistanceToNow(date, { addSuffix: true })
-      .replace('about ', '')
-      .replace('less than a minute ago', 'Just now')
-      .replace(' minute ago', 'm')
-      .replace(' minutes ago', 'm')
-      .replace(' hour ago', 'h')
-      .replace(' hours ago', 'h')
-      .replace(' day ago', 'd')
-      .replace(' days ago', 'd');
+    return formatDistanceToNow(date, { addSuffix: true }).replace('about ', '').replace('less than a minute ago', 'Just now');
+  };
+
+  // --- Photo Grid Layout Logic ---
+  const renderPhotoGrid = () => {
+    if (displayImages.length === 1) {
+      return (
+         <div className="w-full bg-slate-50 border-t border-b border-slate-100 flex items-center justify-center max-h-[700px] overflow-hidden cursor-pointer">
+            <img src={displayImages[0]} alt="" className="w-full h-auto max-h-[700px] object-cover" />
+         </div>
+      );
+    } else if (displayImages.length === 2) {
+      return (
+         <div className="w-full h-[350px] flex border-t border-b border-slate-100 cursor-pointer">
+            <img src={displayImages[0]} className="w-1/2 h-full object-cover border-r border-white" />
+            <img src={displayImages[1]} className="w-1/2 h-full object-cover" />
+         </div>
+      );
+    } else if (displayImages.length === 3) {
+      return (
+         <div className="w-full h-[400px] flex border-t border-b border-slate-100 cursor-pointer">
+            <div className="w-2/3 h-full border-r border-white">
+               <img src={displayImages[0]} className="w-full h-full object-cover" />
+            </div>
+            <div className="w-1/3 h-full flex flex-col">
+               <img src={displayImages[1]} className="w-full h-1/2 object-cover border-b border-white" />
+               <img src={displayImages[2]} className="w-full h-1/2 object-cover" />
+            </div>
+         </div>
+      );
+    } else if (displayImages.length >= 4) {
+      return (
+         <div className="w-full h-[400px] flex border-t border-b border-slate-100 cursor-pointer">
+            <div className="w-2/3 h-full border-r border-white">
+               <img src={displayImages[0]} className="w-full h-full object-cover" />
+            </div>
+            <div className="w-1/3 h-full flex flex-col">
+               <img src={displayImages[1]} className="w-full h-1/3 object-cover border-b border-white" />
+               <img src={displayImages[2]} className="w-full h-1/3 object-cover border-b border-white" />
+               <div className="w-full h-1/3 relative">
+                  <img src={displayImages[3]} className="w-full h-full object-cover" />
+                  {displayImages.length > 4 && (
+                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white font-bold text-2xl">
+                        +{displayImages.length - 4}
+                     </div>
+                  )}
+               </div>
+            </div>
+         </div>
+      );
+    }
   };
 
   if (isDeleting) return null;
@@ -177,9 +191,17 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
               <AvatarFallback>{post.author.name.substring(0, 2).toUpperCase()}</AvatarFallback>
            </Avatar>
            <div className="flex flex-col pt-0.5">
-              <span className="font-semibold text-slate-900 text-[15px] hover:underline cursor-pointer leading-tight">
-                {post.author.name}
-              </span>
+              <div className="font-semibold text-slate-900 text-[15px] leading-tight">
+                 <span className="hover:underline cursor-pointer">{post.author.name}</span>
+                 {/* Feeling / Location / Tag Metadata */}
+                 {(post.feeling || post.location || (post.taggedUsers && post.taggedUsers.length > 0)) && (
+                    <span className="font-normal text-slate-600">
+                       {post.feeling && ` is ${post.feeling}`}
+                       {post.taggedUsers && post.taggedUsers.length > 0 && ` is with ${post.taggedUsers[0]} ${post.taggedUsers.length > 1 ? `and ${post.taggedUsers.length - 1} others` : ''}`}
+                       {post.location && ` at ${post.location}`}
+                    </span>
+                 )}
+              </div>
               <div className="flex items-center gap-1 text-slate-500 text-[13px]">
                  <span className="hover:underline cursor-pointer">
                     {getTimestamp(post.timestamp)}
@@ -189,7 +211,6 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
               </div>
            </div>
         </div>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100 -mr-2">
@@ -197,39 +218,36 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 shadow-xl border-slate-100">
-             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
-                <Share2 className="w-5 h-5" /> Save post
-             </DropdownMenuItem>
+             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg"><Share2 className="w-5 h-5" /> Save post</DropdownMenuItem>
              <DropdownMenuSeparator className="bg-slate-100" />
-             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
-                <EyeOff className="w-5 h-5" /> Hide post
-             </DropdownMenuItem>
-             <DropdownMenuItem className="gap-3 cursor-pointer font-medium py-2 rounded-lg">
-                <AlertCircle className="w-5 h-5" /> Report post
-             </DropdownMenuItem>
              {isAuthor && (
-               <>
-                 <DropdownMenuSeparator className="bg-slate-100" />
-                 <DropdownMenuItem 
-                    onClick={handleDeletePost}
-                    className="gap-3 cursor-pointer font-medium py-2 text-red-600 focus:text-red-700 focus:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 className="w-5 h-5" /> Move to trash
-                 </DropdownMenuItem>
-               </>
+               <DropdownMenuItem onClick={handleDeletePost} className="gap-3 cursor-pointer font-medium py-2 text-red-600 rounded-lg">
+                 <Trash2 className="w-5 h-5" /> Move to trash
+               </DropdownMenuItem>
              )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       {/* --- Content --- */}
-      <div className="px-3 pb-3">
-         <p className="text-[15px] text-slate-900 leading-normal whitespace-pre-wrap">{post.content}</p>
-      </div>
+      {post.background && !displayImages.length && !post.gif ? (
+         // Background Post
+         <div className={`w-full min-h-[350px] flex items-center justify-center p-8 text-center ${post.background}`}>
+            <p className="whitespace-pre-wrap">{post.content}</p>
+         </div>
+      ) : (
+         // Standard Post
+         <div className="px-3 pb-3">
+            <p className="text-[15px] text-slate-900 leading-normal whitespace-pre-wrap">{post.content}</p>
+         </div>
+      )}
 
-      {post.image && (
-        <div className="w-full bg-slate-50 border-t border-b border-slate-100 flex items-center justify-center max-h-[700px] overflow-hidden cursor-pointer">
-           <img src={post.image} alt="Post content" className="w-full h-auto max-h-[700px] object-cover" />
+      {/* --- Images / GIF --- */}
+      {renderPhotoGrid()}
+      
+      {post.gif && (
+        <div className="w-full bg-slate-50 border-t border-b border-slate-100">
+           <img src={post.gif} className="w-full h-auto object-cover" />
         </div>
       )}
 
@@ -244,126 +262,54 @@ export const Post: React.FC<{ post: PostType }> = ({ post }) => {
              <span className="text-slate-500 text-[15px]">{likeCount > 0 ? likeCount : 'Be the first to like this'}</span>
          </div>
          <div className="flex items-center gap-3 text-slate-500 text-[15px]">
-            {post.comments > 0 && (
-               <span className="hover:underline cursor-pointer" onClick={() => setShowComments(true)}>{post.comments} comments</span>
-            )}
-            {post.shares > 0 && (
-               <span className="hover:underline cursor-pointer">{post.shares} shares</span>
-            )}
+            {post.comments > 0 && <span onClick={() => setShowComments(true)} className="hover:underline cursor-pointer">{post.comments} comments</span>}
          </div>
       </div>
 
-      <div className="px-3">
-         <Separator className="bg-slate-200" />
-      </div>
+      <div className="px-3"><Separator className="bg-slate-200" /></div>
 
       {/* --- Actions --- */}
       <div className="px-2 py-1 flex items-center justify-between">
-         <Button 
-            variant="ghost" 
-            onClick={handleLike}
-            className={cn(
-              "flex-1 gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors select-none",
-              isLiked ? "text-synapse-600" : "text-slate-600"
-            )}
-         >
-            <ThumbsUp className={cn("w-5 h-5 mb-0.5", isLiked && "fill-current")} />
-            Like
+         <Button variant="ghost" onClick={handleLike} className={cn("flex-1 gap-2 font-semibold text-[15px] hover:bg-slate-100 rounded-lg h-9 transition-colors select-none", isLiked ? "text-synapse-600" : "text-slate-600")}>
+            <ThumbsUp className={cn("w-5 h-5 mb-0.5", isLiked && "fill-current")} /> Like
          </Button>
-
-         <Button 
-            variant="ghost" 
-            onClick={() => setShowComments(!showComments)}
-            className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none"
-         >
-            <MessageSquare className="w-5 h-5 mb-0.5 scale-x-[-1]" />
-            Comment
+         <Button variant="ghost" onClick={() => setShowComments(!showComments)} className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none">
+            <MessageSquare className="w-5 h-5 mb-0.5 scale-x-[-1]" /> Comment
          </Button>
-
-         <Button 
-            variant="ghost" 
-            onClick={handleShare}
-            className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none"
-         >
-            <Share2 className="w-5 h-5 mb-0.5" />
-            Share
+         <Button variant="ghost" className="flex-1 gap-2 font-semibold text-[15px] text-slate-600 hover:bg-slate-100 rounded-lg h-9 transition-colors select-none">
+            <Share2 className="w-5 h-5 mb-0.5" /> Share
          </Button>
       </div>
 
-      <div className="px-3">
-         <Separator className="bg-slate-200" />
-      </div>
+      <div className="px-3"><Separator className="bg-slate-200" /></div>
 
-      {/* --- Comments Section --- */}
+      {/* --- Comments --- */}
       {(showComments || comments.length > 0) && (
          <div className="px-4 pb-4 pt-3">
-            
-            {/* View More */}
-            {post.comments > comments.length && (
-               <div className="font-semibold text-slate-500 text-sm hover:underline cursor-pointer mb-3">
-                  View more comments
-               </div>
-            )}
-
-            {/* List */}
             <div className="space-y-3 mb-4">
                {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-2 group">
-                     <Avatar className="w-8 h-8 mt-0.5 cursor-pointer hover:brightness-95">
-                        <AvatarImage src={comment.author.avatar} />
-                        <AvatarFallback>{comment.author.name[0]}</AvatarFallback>
-                     </Avatar>
+                     <Avatar className="w-8 h-8 mt-0.5"><AvatarImage src={comment.author.avatar} /><AvatarFallback>{comment.author.name[0]}</AvatarFallback></Avatar>
                      <div className="flex-1 max-w-[90%]">
                         <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2 inline-block relative">
-                           <span className="font-semibold text-[13px] text-slate-900 block hover:underline cursor-pointer">
-                              {comment.author.name}
-                           </span>
-                           <span className="text-[15px] text-slate-900 leading-snug">
-                              {comment.text}
-                           </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5 ml-3 text-[12px] font-bold text-slate-500">
-                           <span className="hover:underline cursor-pointer">Like</span>
-                           <span className="hover:underline cursor-pointer">Reply</span>
-                           <span className="font-normal text-slate-400">
-                             {getTimestamp(comment.timestamp)}
-                           </span>
+                           <span className="font-semibold text-[13px] text-slate-900 block">{comment.author.name}</span>
+                           <span className="text-[15px] text-slate-900 leading-snug">{comment.text}</span>
                         </div>
                      </div>
                   </div>
                ))}
             </div>
-
-            {/* Input */}
             <div className="flex gap-2 items-start pt-1">
-               <Avatar className="w-8 h-8 mt-1">
-                  <AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} />
-                  <AvatarFallback>ME</AvatarFallback>
-               </Avatar>
+               <Avatar className="w-8 h-8 mt-1"><AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} /><AvatarFallback>ME</AvatarFallback></Avatar>
                <form onSubmit={handleComment} className="flex-1 relative bg-[#F0F2F5] rounded-2xl flex items-center transition-all focus-within:ring-1 focus-within:ring-slate-300">
-                  <input 
-                     type="text"
-                     value={commentText}
-                     onChange={(e) => setCommentText(e.target.value)}
-                     placeholder="Write a comment..."
-                     className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] placeholder-slate-500 text-slate-900 rounded-2xl"
-                  />
+                  <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Write a comment..." className="bg-transparent border-none focus:ring-0 w-full px-3 py-2 text-[15px] text-slate-900 rounded-2xl" />
                   <div className="flex items-center gap-2 pr-3 text-slate-500">
-                     <Smile className="w-4 h-4 hover:text-slate-700 cursor-pointer" />
-                     <Camera className="w-4 h-4 hover:text-slate-700 cursor-pointer" />
-                     <button 
-                        type="submit" 
-                        disabled={!commentText.trim()}
-                        className="p-1 rounded-full text-synapse-600 hover:bg-slate-200 disabled:text-transparent disabled:hover:bg-transparent transition-colors"
-                     >
-                        <Send className="w-4 h-4" />
-                     </button>
+                     <button type="submit" disabled={!commentText.trim()} className="p-1 rounded-full text-synapse-600 hover:bg-slate-200 disabled:text-transparent"><Send className="w-4 h-4" /></button>
                   </div>
                </form>
             </div>
          </div>
       )}
-
     </Card>
   );
 };

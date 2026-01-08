@@ -15,6 +15,8 @@ export const firebaseConfig = {
   appId: env.VITE_FIREBASE_APP_ID
 };
 
+export const GIPHY_API_KEY = "qHcH0nct2kd9QQ0nhvHmPM8LOj9v0yeD";
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
