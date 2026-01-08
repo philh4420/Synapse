@@ -1,6 +1,8 @@
 import React from 'react';
 import { Users, Bookmark, Calendar, Clock, ChevronDown, Settings, Flag, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';
+import { Separator } from './ui/Separator';
 
 interface SidebarProps {
   activeTab: string;
@@ -27,11 +29,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             onClick={() => setActiveTab('profile')}
             className="flex items-center gap-3 p-2 hover:bg-black/5 rounded-lg cursor-pointer transition-colors"
         >
-          <img 
-            src={userProfile?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} 
-            alt="Profile" 
-            className="w-9 h-9 rounded-full object-cover border border-slate-200"
-          />
+          <Avatar className="h-9 w-9 border border-slate-200">
+             <AvatarImage src={userProfile?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} />
+             <AvatarFallback>{userProfile?.displayName?.substring(0,2).toUpperCase()}</AvatarFallback>
+          </Avatar>
           <span className="font-semibold text-slate-900 text-[15px]">{userProfile?.displayName}</span>
         </li>
         
@@ -53,12 +54,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
            </li>
       </ul>
       
-      {/* 
-        This section used to contain dummy shortcuts. 
-        It is now empty until real group functionality is implemented 
-        to ensure no fake data is displayed.
-      */}
-      <div className="pt-4 border-t border-slate-300">
+      <Separator className="my-4 bg-slate-300/50" />
+      
+      <div className="pt-2">
          <h3 className="text-slate-500 font-semibold text-[17px] px-2 mb-2">Your Shortcuts</h3>
          <div className="px-2 text-sm text-slate-500 italic">
             <p>Join groups to see them here.</p>

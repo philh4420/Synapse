@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Image, Video, Link2, Smile, Send, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';
 import { uploadToCloudinary } from '../utils/upload';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
@@ -74,16 +76,12 @@ export const CreatePost: React.FC<CreatePostProps> = () => {
   };
 
   return (
-    <div className={`
-      bg-white rounded-3xl p-5 shadow-sm border border-slate-100 transition-all duration-300
-      ${isFocused ? 'shadow-xl shadow-synapse-500/10 ring-1 ring-synapse-100' : ''}
-    `}>
+    <Card className={`p-5 transition-all duration-300 ${isFocused ? 'shadow-xl shadow-synapse-500/10 ring-1 ring-synapse-100' : ''}`}>
       <div className="flex gap-4">
-        <img 
-          src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} 
-          alt="User" 
-          className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-50"
-        />
+        <Avatar className="h-11 w-11 ring-2 ring-slate-50">
+            <AvatarImage src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} />
+            <AvatarFallback>{user?.displayName?.substring(0,2).toUpperCase()}</AvatarFallback>
+        </Avatar>
         <div className="flex-1">
           <textarea
             value={content}
@@ -117,22 +115,24 @@ export const CreatePost: React.FC<CreatePostProps> = () => {
                 accept="image/*"
                 className="hidden"
               />
-              <button 
+              <Button 
+                variant="ghost"
+                size="icon"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-synapse-600 bg-synapse-50 hover:bg-synapse-100 rounded-lg transition-colors"
+                className="text-synapse-600 bg-synapse-50 hover:bg-synapse-100 transition-colors"
                 title="Add Photo"
               >
                 <Image className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-pink-600 bg-pink-50 hover:bg-pink-100 rounded-lg transition-colors">
+              </Button>
+              <Button variant="ghost" size="icon" className="text-pink-600 bg-pink-50 hover:bg-pink-100 transition-colors">
                 <Video className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+              </Button>
+              <Button variant="ghost" size="icon" className="text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors">
                 <Link2 className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+              </Button>
+              <Button variant="ghost" size="icon" className="text-yellow-600 bg-yellow-50 hover:bg-yellow-100 transition-colors">
                 <Smile className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
             
             <Button 
@@ -150,6 +150,6 @@ export const CreatePost: React.FC<CreatePostProps> = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };

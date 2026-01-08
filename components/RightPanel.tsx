@@ -4,6 +4,9 @@ import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { UserProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/Avatar';
+import { Skeleton } from './ui/Skeleton';
+import { Button } from './ui/Button';
 
 export const RightPanel: React.FC = () => {
   const { user } = useAuth();
@@ -13,8 +16,6 @@ export const RightPanel: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch users to populate the contacts list
-        // In a real app, this would query a subcollection of friends/contacts
         const usersQuery = query(collection(db, 'users'), limit(20));
         const usersSnap = await getDocs(usersQuery);
         
@@ -33,8 +34,6 @@ export const RightPanel: React.FC = () => {
     fetchData();
   }, [user]);
 
-  // If no contacts and not loading, render nothing (or a subtle empty state)
-  // Facebook often just leaves the area empty or shows "No contacts"
   if (!loading && contacts.length === 0) {
     return (
       <div className="hidden lg:flex flex-col w-[280px] xl:w-[360px] h-[calc(100vh-56px)] fixed right-0 top-14 pt-4 pr-2 pb-4">
@@ -50,16 +49,16 @@ export const RightPanel: React.FC = () => {
       <div className="flex-1">
         <div className="flex justify-between items-center mb-2 px-2">
           <h3 className="font-semibold text-slate-500 text-[17px]">Contacts</h3>
-          <div className="flex gap-2 text-slate-500">
-             <div className="p-2 hover:bg-slate-200 rounded-full cursor-pointer transition-colors">
+          <div className="flex gap-1 text-slate-500">
+             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-200">
                <Video className="w-4 h-4" />
-             </div>
-             <div className="p-2 hover:bg-slate-200 rounded-full cursor-pointer transition-colors">
+             </Button>
+             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-200">
                <Search className="w-4 h-4" />
-             </div>
-             <div className="p-2 hover:bg-slate-200 rounded-full cursor-pointer transition-colors">
+             </Button>
+             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-200">
                <MoreHorizontal className="w-4 h-4" />
-             </div>
+             </Button>
           </div>
         </div>
         
@@ -69,21 +68,18 @@ export const RightPanel: React.FC = () => {
              // Skeleton loading state
              [...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3 p-2 rounded-lg">
-                   <div className="w-9 h-9 bg-slate-200 rounded-full animate-pulse"></div>
-                   <div className="h-4 bg-slate-200 rounded w-24 animate-pulse"></div>
+                   <Skeleton className="h-9 w-9 rounded-full" />
+                   <Skeleton className="h-4 w-24" />
                 </div>
              ))
           ) : (
             contacts.map((u) => (
               <div key={u.uid} className="flex items-center gap-3 p-2 hover:bg-black/5 rounded-lg cursor-pointer transition-colors group">
                 <div className="relative">
-                  <img 
-                    src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName}`} 
-                    alt={u.displayName || 'User'} 
-                    className="w-9 h-9 rounded-full object-cover border border-slate-200" 
-                  />
-                  {/* Note: Online status dot removed as we do not track real-time presence yet. 
-                      Adding it without data would be fake data. */}
+                  <Avatar className="h-9 w-9 border border-slate-200">
+                     <AvatarImage src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName}`} />
+                     <AvatarFallback>{u.displayName?.substring(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                 </div>
                 <span className="font-medium text-slate-900 text-[15px]">{u.displayName}</span>
               </div>
