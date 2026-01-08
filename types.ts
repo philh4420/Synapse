@@ -8,6 +8,7 @@ export interface UserProfile {
   bio?: string;
   followers?: string[];
   following?: string[];
+  birthDate?: string; // ISO Date string YYYY-MM-DD
 }
 
 export interface Post {
@@ -49,6 +50,14 @@ export interface SiteSettings {
 export interface Trend {
   id: string;
   tag: string;
-  posts: string; // e.g. "54k" or just a number converted to string
-  count?: number; // numeric value for sorting
+  posts: string;
+  count?: number;
+}
+
+export interface SponsoredAd {
+  id: string;
+  title: string;
+  site: string;
+  image: string;
+  link: string;
 }
