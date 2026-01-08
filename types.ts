@@ -29,9 +29,11 @@ export interface Post {
 
 export interface Story {
   id: string;
-  user: string;
+  uid: string;
+  displayName: string;
   avatar: string;
   image: string;
+  timestamp: Date;
 }
 
 export interface NavItem {
