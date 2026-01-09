@@ -109,6 +109,25 @@ export interface Page {
   timestamp: any;
 }
 
+export interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // ISO String
+  time: string;
+  location: string;
+  category: string;
+  coverURL: string;
+  host: {
+    uid: string;
+    name: string;
+    avatar: string;
+  };
+  attendees: string[]; // Array of UIDs
+  interested: string[]; // Array of UIDs
+  timestamp: any;
+}
+
 export interface NavItem {
   icon: React.ElementType;
   label: string;
