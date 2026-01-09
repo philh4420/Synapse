@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -103,11 +104,97 @@
         --ring: 243 75% 59%;
         --radius: 0.75rem;
       }
+
+      /* Dark Mode Overrides */
+      .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 243 75% 59%;
+        --primary-foreground: 222.2 47.4% 11.2%;
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 243 75% 59%;
+      }
       
       body {
         font-family: var(--font-sans);
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
+        transition: background-color 0.3s ease, color 0.3s ease, font-size 0.2s ease;
+      }
+
+      /* Accessibility & Display Settings Classes */
+      
+      /* High Contrast */
+      body.high-contrast {
+        filter: contrast(125%);
+      }
+
+      /* Reduce Motion */
+      body.reduce-motion * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+
+      /* Font Sizing (Scaling base font size affects rems) */
+      html.text-small {
+        font-size: 14px;
+      }
+      html.text-medium {
+        font-size: 16px;
+      }
+      html.text-large {
+        font-size: 20px;
+      }
+
+      /* Compact Mode */
+      body.compact-mode .p-4 { padding: 0.5rem !important; }
+      body.compact-mode .p-6 { padding: 1rem !important; }
+      body.compact-mode .gap-4 { gap: 0.5rem !important; }
+      body.compact-mode .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
+      body.compact-mode .h-12 { height: 2.5rem !important; }
+      body.compact-mode .text-xl { font-size: 1.125rem !important; }
+
+      /* Dark Mode Utility Overrides for Hardcoded Colors */
+      .dark .bg-white {
+        background-color: #1e293b !important; /* slate-800 */
+        color: #f1f5f9;
+      }
+      .dark .text-slate-900 {
+        color: #f8fafc !important;
+      }
+      .dark .text-slate-700 {
+        color: #cbd5e1 !important;
+      }
+      .dark .text-slate-600 {
+        color: #94a3b8 !important;
+      }
+      .dark .text-slate-500 {
+        color: #64748b !important;
+      }
+      .dark .bg-slate-50, .dark .bg-slate-100 {
+        background-color: #0f172a !important; /* slate-950 */
+        border-color: #334155 !important;
+      }
+      .dark .border-slate-100, .dark .border-slate-200 {
+        border-color: #334155 !important;
+      }
+      .dark .bg-white\/80 {
+        background-color: rgba(30, 41, 59, 0.8) !important;
       }
     </style>
     
