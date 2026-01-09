@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Post as PostComponent } from './Post';
@@ -9,7 +10,7 @@ import {
   MapPin, Link as LinkIcon, Edit3, Loader2, 
   Briefcase, GraduationCap, Heart, Camera, MoreHorizontal, 
   Plus, Search, Grid, Home, Phone, Globe, Calendar, User, Languages, MessageCircle,
-  Image as ImageIcon, Sparkles, Layout, Mail, Users
+  Image as ImageIcon, Sparkles, Layout, Mail, Users, MonitorPlay
 } from 'lucide-react';
 import { EditProfileDialog } from './EditProfileDialog';
 import { FriendButton } from './FriendButton';
@@ -103,25 +104,31 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
       }
       
       try {
-        // Firestore 'in' query supports max 10 items. We'll take the first 10 for preview.
-        // For 'Friends' tab, we might need to batch fetch if > 10, but for now 10 is enough for preview.
-        // If the 'Friends' tab is active, we could fetch more.
-        const friendIds = viewedProfile.friends.slice(0, 10);
-        if (friendIds.length > 0) {
-            const q = query(collection(db, 'users'), where(documentId(), 'in', friendIds));
-            const snap = await getDocs(q);
-            const friendList = snap.docs.map(d => d.data() as UserProfile);
-            setFriends(friendList);
+        // Sanitize friend IDs
+        const validFriendIds = viewedProfile.friends.filter(id => id && typeof id === 'string' && id.trim().length > 0);
+        
+        if (validFriendIds.length === 0) {
+            setFriends([]);
+            return;
         }
+
+        // Limit to 10 for preview/tab
+        const friendIdsChunk = validFriendIds.slice(0, 10);
+        
+        const q = query(collection(db, 'users'), where(documentId(), 'in', friendIdsChunk));
+        const snap = await getDocs(q);
+        const friendList = snap.docs.map(d => d.data() as UserProfile);
+        setFriends(friendList);
       } catch (error) {
         console.error("Error fetching friends", error);
+        setFriends([]);
       }
     };
     
     fetchFriends();
 
     return () => unsubscribe();
-  }, [viewedProfile?.uid]);
+  }, [viewedProfile?.uid, viewedProfile?.friends]);
 
   if (profileLoading) {
      return (
@@ -420,6 +427,62 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
      </Card>
   );
 
+  const VideosTab = () => (
+     <Card className="p-6 bg-white/80 backdrop-blur-xl border-white/60 min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex justify-between items-center mb-6">
+           <h3 className="text-xl font-bold text-slate-900">Videos</h3>
+        </div>
+
+        {posts.filter(p => p.video).length > 0 ? (
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {posts.filter(p => p.video).map((post) => (
+                 <div key={post.id} className="aspect-video bg-black rounded-xl overflow-hidden relative group shadow-md border border-slate-200">
+                    <video src={post.video} className="w-full h-full object-cover" controls />
+                 </div>
+              ))}
+           </div>
+        ) : (
+           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                 <MonitorPlay className="w-8 h-8 opacity-20" />
+              </div>
+              <p>No videos shared yet.</p>
+           </div>
+        )}
+     </Card>
+  );
+
+  const CheckInsTab = () => (
+     <Card className="p-6 bg-white/80 backdrop-blur-xl border-white/60 min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex justify-between items-center mb-6">
+           <h3 className="text-xl font-bold text-slate-900">Check-ins</h3>
+        </div>
+
+        {posts.filter(p => p.location).length > 0 ? (
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {posts.filter(p => p.location).map((post) => (
+                 <div key={post.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                       <MapPin className="w-6 h-6 fill-current" />
+                    </div>
+                    <div>
+                       <h4 className="font-bold text-slate-900 text-lg">{post.location}</h4>
+                       <p className="text-sm text-slate-500">{format(post.timestamp, 'MMMM do, yyyy')}</p>
+                    </div>
+                 </div>
+              ))}
+           </div>
+        ) : (
+           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                 <MapPin className="w-8 h-8 opacity-20" />
+              </div>
+              <p>No check-ins yet.</p>
+           </div>
+        )}
+     </Card>
+  );
+
   return (
     <div className="min-h-screen bg-[#F0F2F5]/50 -mt-6 pb-20">
       
@@ -614,6 +677,8 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
          {activeTab === 'About' && <AboutTab />}
          {activeTab === 'Friends' && <FriendsTab />}
          {activeTab === 'Photos' && <PhotosTab />}
+         {activeTab === 'Videos' && <VideosTab />}
+         {activeTab === 'Check-ins' && <CheckInsTab />}
       </div>
 
       <EditProfileDialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen} />
