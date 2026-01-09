@@ -99,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({
+      const notifs = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate() || new Date()
@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let count = 0;
-      snapshot.docs.forEach(doc => {
+      (snapshot as any).docs.forEach((doc: any) => {
         const data = doc.data();
         // Check if last message exists, is NOT read, and I am NOT the sender
         if (data.lastMessage && !data.lastMessage.read && data.lastMessage.senderId !== user.uid) {

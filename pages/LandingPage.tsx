@@ -56,15 +56,20 @@ export const LandingPage: React.FC = () => {
         setSignupEnabled(data.signupEnabled);
         setAnnouncement(data.announcement);
       }
+    }, (err) => {
+      console.warn("Settings listener warning:", err.code);
     });
 
     // 2. Stats Listener (Public Document)
     const unsubStats = onSnapshot(doc(db, 'stats', 'public'), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data();
+        const data = docSnap.data() as any;
         setUserCount(data.userCount || 0);
         setRecentAvatars(data.recentAvatars || []);
       }
+    }, (err) => {
+      // Gracefully handle missing doc or permission error during init
+      console.warn("Stats listener warning:", err.code);
     });
 
     return () => {
@@ -123,8 +128,9 @@ export const LandingPage: React.FC = () => {
            const statsSnap = await getDoc(statsRef);
            
            if (statsSnap.exists()) {
-              const currentData = statsSnap.data();
+              const currentData = statsSnap.data() as any;
               const currentAvatars = currentData.recentAvatars || [];
+              // Prepend new avatar, keep max 4
               const newAvatars = [photoURL, ...currentAvatars].slice(0, 4);
               
               await updateDoc(statsRef, {

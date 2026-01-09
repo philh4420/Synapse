@@ -132,7 +132,7 @@ export const AdminPanel: React.FC = () => {
     // 1. Reports Listener
     const qReports = query(collection(db, 'reports'), where('status', '==', 'pending'), orderBy('timestamp', 'desc'));
     const unsubReports = onSnapshot(qReports, async (snapshot) => {
-        const reportsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Report[];
+        const reportsData = (snapshot as any).docs.map((d: any) => ({ id: d.id, ...d.data() })) as Report[];
         // Hydrate
         const hydrated = await Promise.all(reportsData.map(async (r) => {
             const rptSnap = await getDoc(doc(db, 'users', r.reporterId));
@@ -150,13 +150,13 @@ export const AdminPanel: React.FC = () => {
     const qUsers = query(collection(db, 'users'), limit(50)); 
     // In production, implement real pagination or search-based fetching
     const unsubUsers = onSnapshot(qUsers, (snapshot) => {
-        setUsersList(snapshot.docs.map(d => d.data() as UserProfile));
+        setUsersList((snapshot as any).docs.map((d: any) => d.data() as UserProfile));
     });
 
     // 3. Logs Listener
     const qLogs = query(collection(db, 'admin_logs'), orderBy('timestamp', 'desc'), limit(20));
     const unsubLogs = onSnapshot(qLogs, (snapshot) => {
-        setLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AdminLog)));
+        setLogs((snapshot as any).docs.map((d: any) => ({ id: d.id, ...d.data() } as AdminLog)));
     });
 
     return () => { unsubReports(); unsubUsers(); unsubLogs(); };
@@ -478,7 +478,7 @@ export const AdminPanel: React.FC = () => {
                             <div className="flex flex-col justify-center gap-2 min-w-[140px]">
                                <Button variant="destructive" onClick={() => handleBanUser(report.reportedId, false)}>
                                   <Ban className="w-4 h-4 mr-2" /> Ban User
-                               </Button>
+                                </Button>
                                <Button variant="outline" onClick={() => resolveReport(report.id, 'resolve')}>
                                   <Check className="w-4 h-4 mr-2" /> Resolve
                                </Button>

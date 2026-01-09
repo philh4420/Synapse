@@ -106,7 +106,7 @@ export const RightPanel: React.FC = () => {
     // 2. Real-time Listener for Ads
     const adsQuery = query(collection(db, 'ads'));
     const unsubscribeAds = onSnapshot(adsQuery, (snapshot) => {
-      const fetchedAds = snapshot.docs.map(doc => ({
+      const fetchedAds = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as SponsoredAd[];

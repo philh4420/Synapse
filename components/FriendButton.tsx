@@ -58,9 +58,9 @@ export const FriendButton: React.FC<FriendButtonProps> = ({ targetUid, className
     );
 
     const unsubSent = onSnapshot(qSent, (snap) => {
-      if (!snap.empty) {
+      if (!(snap as any).empty) {
         setStatus('pending_sent');
-        setRequestId(snap.docs[0].id);
+        setRequestId((snap as any).docs[0].id);
       } else {
         if (status === 'pending_sent') setStatus('none');
       }
@@ -68,9 +68,9 @@ export const FriendButton: React.FC<FriendButtonProps> = ({ targetUid, className
     });
 
     const unsubReceived = onSnapshot(qReceived, (snap) => {
-      if (!snap.empty) {
+      if (!(snap as any).empty) {
         setStatus('pending_received');
-        setRequestId(snap.docs[0].id);
+        setRequestId((snap as any).docs[0].id);
       } else {
         if (status === 'pending_received') setStatus('none');
       }

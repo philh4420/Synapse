@@ -28,7 +28,7 @@ export const Stories: React.FC = () => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedStories = snapshot.docs.map(doc => {
+      const fetchedStories = (snapshot as any).docs.map((doc: any) => {
         const data = doc.data();
         return {
           id: doc.id,

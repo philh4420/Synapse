@@ -36,7 +36,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({ onViewProfile }) => {
     );
     const unsubscribe = onSnapshot(qRequests, async (snapshot) => {
       const reqs: FriendRequest[] = [];
-      for (const docSnap of snapshot.docs) {
+      for (const docSnap of (snapshot as any).docs) {
         const data = docSnap.data();
         const senderRef = doc(db, 'users', data.senderId);
         const senderSnap = await getDoc(senderRef);
@@ -110,11 +110,11 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({ onViewProfile }) => {
         // Basic exclusion of pending requests
         const qSent = query(collection(db, 'friend_requests'), where('senderId', '==', user.uid));
         const sentSnap = await getDocs(qSent);
-        sentSnap.forEach(doc => excludeIds.add(doc.data().receiverId));
+        sentSnap.forEach(doc => excludeIds.add((doc.data() as any).receiverId));
 
         const qReceived = query(collection(db, 'friend_requests'), where('receiverId', '==', user.uid));
         const recSnap = await getDocs(qReceived);
-        recSnap.forEach(doc => excludeIds.add(doc.data().senderId));
+        recSnap.forEach(doc => excludeIds.add((doc.data() as any).senderId));
 
         const qUsers = query(collection(db, 'users'), limit(30));
         const userSnap = await getDocs(qUsers);
@@ -349,70 +349,4 @@ const FriendRequestCard = ({ req, onViewProfile }: { req: FriendRequest, onViewP
     <Card className="overflow-hidden border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 rounded-3xl flex flex-col group bg-white">
       <div 
         className="aspect-square bg-slate-100 relative overflow-hidden cursor-pointer"
-        onClick={() => onViewProfile && onViewProfile(req.senderId)}
-      >
-          <img 
-            src={req.sender?.photoURL || ''} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-            alt={req.sender?.displayName || 'User'}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
-      </div>
-      <div className="p-4 space-y-3 flex-1 flex flex-col -mt-12 relative z-10">
-          <div className="space-y-0.5 flex-1 text-white drop-shadow-md">
-            <h3 
-              className="font-bold text-lg truncate leading-tight cursor-pointer hover:underline"
-              onClick={() => onViewProfile && onViewProfile(req.senderId)}
-            >
-              {req.sender?.displayName}
-            </h3>
-            <p className="text-xs opacity-90 font-medium">1 mutual friend</p>
-          </div>
-          <div className="space-y-2 pt-4 bg-white rounded-t-2xl -mx-4 px-4">
-            <FriendButton targetUid={req.senderId} className="w-full shadow-lg shadow-synapse-500/20" />
-            <Button variant="secondary" className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700">Delete</Button>
-          </div>
-      </div>
-    </Card>
-);
-
-const SuggestionCard = ({ user, onViewProfile }: { user: UserProfile, onViewProfile?: (uid: string) => void }) => (
-    <Card className="overflow-hidden border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 rounded-3xl flex flex-col group bg-white">
-        <div 
-          className="aspect-square bg-slate-100 relative overflow-hidden cursor-pointer"
-          onClick={() => onViewProfile && onViewProfile(user.uid)}
-        >
-          <img 
-            src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-            alt={user.displayName || 'User'}
-          />
-        </div>
-        <div className="p-4 space-y-3 flex-1 flex flex-col">
-          <div className="space-y-1 flex-1">
-              <h3 
-                className="font-bold text-[17px] text-slate-900 truncate leading-tight cursor-pointer hover:underline"
-                onClick={() => onViewProfile && onViewProfile(user.uid)}
-              >
-                {user.displayName}
-              </h3>
-              <p className="text-xs text-slate-500 font-medium">Suggested for you</p>
-          </div>
-          <div className="space-y-2 mt-auto">
-              <FriendButton targetUid={user.uid} className="w-full" />
-              <Button variant="ghost" className="w-full text-slate-400 hover:text-slate-600 hover:bg-slate-50">Remove</Button>
-          </div>
-        </div>
-    </Card>
-);
-
-const EmptyState = ({ icon: Icon, title, desc, action }: { icon: any, title: string, desc: string, action?: React.ReactNode }) => (
-    <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm text-center px-6 animate-in fade-in zoom-in-95 duration-500">
-        <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
-          <Icon className="w-10 h-10 text-slate-300" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-900 mb-2">{title}</h3>
-        <p className="text-slate-500 max-w-sm mx-auto mb-6 leading-relaxed">{desc}</p>
-        {action}
-    </div>
-);
+        

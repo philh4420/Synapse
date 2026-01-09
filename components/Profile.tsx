@@ -81,7 +81,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid, onViewProfile }) =>
     );
 
     const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => {
+      const postsData = (snapshot as any).docs.map((doc: any) => {
         const data = doc.data();
         return {
           id: doc.id,

@@ -138,9 +138,9 @@ export const Feed: React.FC = () => {
      );
 
      const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (snapshot.empty) return;
+        if ((snapshot as any).empty) return;
         
-        const newIncoming = processPosts(snapshot.docs);
+        const newIncoming = processPosts((snapshot as any).docs);
         if (newIncoming.length > 0) {
            setIncomingPosts(prev => {
               // Ensure uniqueness against both current posts and existing incoming queue

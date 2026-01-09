@@ -111,11 +111,11 @@ export const Post: React.FC<{ post: PostType }> = ({ post: initialPost }) => {
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'posts', initialPost.id), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data();
+        const data = docSnap.data() as any;
         setCurrentPost({
           id: docSnap.id,
           ...data,
-          timestamp: data.timestamp?.toDate() || new Date(),
+          timestamp: data?.timestamp?.toDate() || new Date(),
         } as PostType);
       } else {
         setIsDeleting(true);
@@ -140,7 +140,7 @@ export const Post: React.FC<{ post: PostType }> = ({ post: initialPost }) => {
     if (showComments) {
       const q = query(collection(db, 'posts', currentPost.id, 'comments'), orderBy('timestamp', 'asc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[]);
+        setComments((snapshot as any).docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Comment[]);
       });
       return () => unsubscribe();
     }
