@@ -11,7 +11,7 @@ import {
 import { db } from '../firebaseConfig';
 import { Skeleton } from './ui/Skeleton';
 import { useAuth } from '../context/AuthContext';
-import { Loader2, Sparkles, Rss, Users } from 'lucide-react';
+import { Loader2, Sparkles, Rss, Users, ArrowUp, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const POSTS_PER_PAGE = 5;
@@ -19,6 +19,7 @@ const POSTS_PER_PAGE = 5;
 export const Feed: React.FC = () => {
   const { user, userProfile } = useAuth();
   const [posts, setPosts] = useState<PostType[]>([]);
+  const [incomingPosts, setIncomingPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
@@ -26,7 +27,8 @@ export const Feed: React.FC = () => {
   const [feedType, setFeedType] = useState<'all' | 'friends'>('all');
 
   const observer = useRef<IntersectionObserver | null>(null);
-  
+  const topRef = useRef<HTMLDivElement>(null);
+
   // Infinite Scroll Observer
   const lastPostElementRef = useCallback((node: HTMLDivElement) => {
     if (loading || loadingMore) return;
@@ -45,6 +47,7 @@ export const Feed: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     setPosts([]);
+    setIncomingPosts([]);
     setLastVisible(null);
     setHasMore(true);
 
@@ -52,8 +55,6 @@ export const Feed: React.FC = () => {
       try {
         let q;
         if (feedType === 'friends' && userProfile?.following && userProfile.following.length > 0) {
-           // Firestore 'in' query limit workaround (max 10)
-           // In prod, use array-contains or separate feed collection
            const friendIds = userProfile.following.slice(0, 10);
            q = query(
               collection(db, 'posts'),
@@ -70,7 +71,6 @@ export const Feed: React.FC = () => {
         }
 
         const snapshot = await getDocs(q);
-        
         const fetchedPosts = processPosts(snapshot.docs);
 
         setPosts(fetchedPosts);
@@ -130,7 +130,7 @@ export const Feed: React.FC = () => {
   // Real-time listener for NEW posts
   useEffect(() => {
      if (!user) return;
-     const now = new Date();
+     const now = new Date(); // Only listen for posts created AFTER component mount
      const q = query(
         collection(db, 'posts'), 
         where('timestamp', '>', now), 
@@ -138,19 +138,34 @@ export const Feed: React.FC = () => {
      );
 
      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const newIncoming = processPosts(snapshot.docs);
+        if (snapshot.empty) return;
         
+        const newIncoming = processPosts(snapshot.docs);
         if (newIncoming.length > 0) {
-           setPosts(prev => {
-              const existingIds = new Set(prev.map(p => p.id));
-              const uniqueNew = newIncoming.filter(p => !existingIds.has(p.id));
+           setIncomingPosts(prev => {
+              // Ensure uniqueness against both current posts and existing incoming queue
+              const currentIds = new Set(posts.map(p => p.id));
+              const prevIncomingIds = new Set(prev.map(p => p.id));
+              
+              const uniqueNew = newIncoming.filter(p => 
+                  !currentIds.has(p.id) && !prevIncomingIds.has(p.id)
+              );
+              
               return [...uniqueNew, ...prev];
            });
         }
      });
 
      return () => unsubscribe();
-  }, [user]);
+  }, [user, posts]); // dependency on posts ensures strict uniqueness check
+
+  const showNewPosts = () => {
+      setPosts(prev => [...incomingPosts, ...prev]);
+      setIncomingPosts([]);
+      if (topRef.current) {
+          topRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+  };
 
   // Helper to process and filter posts privacy
   const processPosts = (docs: DocumentData[]) => {
@@ -165,7 +180,6 @@ export const Feed: React.FC = () => {
           if (post.author.uid === user?.uid) return true;
           if (post.privacy === 'public' || !post.privacy) return true;
           if (post.privacy === 'friends') {
-              // Simple check: is the author in my friends list?
               return userProfile?.friends?.includes(post.author.uid);
           }
           if (post.privacy === 'only_me') return false;
@@ -197,7 +211,8 @@ export const Feed: React.FC = () => {
   );
 
   return (
-    <div className="w-full max-w-[680px] mx-auto pb-24 lg:pb-6">
+    <div className="w-full max-w-[680px] mx-auto pb-24 lg:pb-6 relative">
+      <div ref={topRef} />
       
       {/* Stories Section */}
       <Stories />
@@ -208,15 +223,15 @@ export const Feed: React.FC = () => {
       </div>
 
       {/* Feed Filter Tabs */}
-      <div className="flex items-center justify-between mb-4 px-1">
-         <div className="flex p-1 bg-slate-200/50 rounded-xl">
+      <div className="flex items-center justify-between mb-4 px-1 sticky top-[4.5rem] z-20 transition-all">
+         <div className="flex p-1 bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200/60">
              <button
                 onClick={() => setFeedType('all')}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300",
                   feedType === 'all' 
-                    ? "bg-white text-synapse-600 shadow-sm ring-1 ring-black/5" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    ? "bg-slate-900 text-white shadow-md" 
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                 )}
              >
                 <Rss className="w-4 h-4" />
@@ -225,10 +240,10 @@ export const Feed: React.FC = () => {
              <button
                 onClick={() => setFeedType('friends')}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300",
                   feedType === 'friends' 
-                    ? "bg-white text-synapse-600 shadow-sm ring-1 ring-black/5" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    ? "bg-slate-900 text-white shadow-md" 
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                 )}
              >
                 <Users className="w-4 h-4" />
@@ -236,6 +251,19 @@ export const Feed: React.FC = () => {
              </button>
          </div>
       </div>
+
+      {/* New Posts Pill */}
+      {incomingPosts.length > 0 && (
+         <div className="sticky top-28 z-30 flex justify-center mb-4 pointer-events-none">
+             <button 
+                onClick={showNewPosts}
+                className="pointer-events-auto bg-synapse-600 hover:bg-synapse-700 text-white px-5 py-2 rounded-full shadow-lg shadow-synapse-500/30 font-bold text-sm flex items-center gap-2 animate-in slide-in-from-top-4 fade-in duration-300 transition-all transform hover:scale-105"
+             >
+                <ArrowUp className="w-4 h-4" />
+                Show {incomingPosts.length} new {incomingPosts.length === 1 ? 'post' : 'posts'}
+             </button>
+         </div>
+      )}
       
       {/* Posts Feed */}
       {loading ? (
@@ -252,15 +280,15 @@ export const Feed: React.FC = () => {
           })}
           
           {posts.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-slate-200 text-center px-4">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                <Sparkles className="w-10 h-10 text-slate-300" />
+            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl shadow-sm border border-slate-200 text-center px-4 animate-in fade-in zoom-in-95 duration-500">
+              <div className="w-20 h-20 bg-gradient-to-br from-synapse-100 to-synapse-50 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                <Sparkles className="w-10 h-10 text-synapse-400" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Welcome to your feed!</h3>
-              <p className="text-slate-500 mt-2 max-w-sm mx-auto">
+              <h3 className="text-xl font-bold text-slate-900">Welcome to Synapse</h3>
+              <p className="text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
                  {feedType === 'friends' 
-                   ? "It looks like your friends haven't posted anything yet. Add more friends to see their updates here." 
-                   : "Be the first to share what's on your mind, or connect with friends to see their posts."}
+                   ? "Your friends haven't posted yet. Connect with more people to populate your feed." 
+                   : "This is the start of something new. Be the first to share a moment!"}
               </p>
             </div>
           )}
@@ -272,13 +300,12 @@ export const Feed: React.FC = () => {
           )}
 
           {!hasMore && posts.length > 0 && (
-             <div className="text-center py-10">
+             <div className="text-center py-12 flex flex-col items-center opacity-60 hover:opacity-100 transition-opacity">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 text-slate-400 mb-3">
-                   <div className="w-2 h-2 bg-slate-400 rounded-full mx-0.5"></div>
-                   <div className="w-2 h-2 bg-slate-400 rounded-full mx-0.5"></div>
-                   <div className="w-2 h-2 bg-slate-400 rounded-full mx-0.5"></div>
+                   <Zap className="w-6 h-6 fill-current" />
                 </div>
-                <p className="text-slate-500 font-medium text-sm">You're all caught up!</p>
+                <h4 className="font-bold text-slate-700">You're all caught up!</h4>
+                <p className="text-slate-500 text-sm mt-1">Check back later for more updates.</p>
              </div>
           )}
         </div>
