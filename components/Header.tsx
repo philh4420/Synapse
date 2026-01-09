@@ -571,21 +571,17 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                         </div>
                     </DropdownMenuItem>
 
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="py-2.5 px-3 rounded-lg cursor-pointer hover:bg-slate-50">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center">
-                                    <Moon className="w-5 h-5 text-slate-700" />
-                                </div>
-                                <span className="font-medium text-slate-900">Display & accessibility</span>
+                    <DropdownMenuItem 
+                        className="py-2.5 px-3 rounded-lg cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                        onClick={() => setActiveTab('display')}
+                    >
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center">
+                                <Moon className="w-5 h-5 text-slate-700" />
                             </div>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-64">
-                            <DropdownMenuItem className="py-2 cursor-pointer">Dark Mode</DropdownMenuItem>
-                            <DropdownMenuItem className="py-2 cursor-pointer">Compact Mode</DropdownMenuItem>
-                            <DropdownMenuItem className="py-2 cursor-pointer">Keyboard</DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                            <span className="font-medium text-slate-900">Display & accessibility</span>
+                        </div>
+                    </DropdownMenuItem>
                 </DropdownMenuGroup>
 
                 <DropdownMenuItem 

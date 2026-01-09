@@ -1,5 +1,6 @@
 
 
+
 export type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry';
 
 export interface UserSettings {
@@ -16,6 +17,12 @@ export interface UserSettings {
     comments?: boolean;
     friendRequests?: boolean;
     tags?: boolean;
+  };
+  accessibility?: {
+    compactMode?: boolean;
+    fontSize?: 'small' | 'medium' | 'large';
+    reduceMotion?: boolean;
+    highContrast?: boolean;
   };
   loginAlerts?: boolean;
 }
