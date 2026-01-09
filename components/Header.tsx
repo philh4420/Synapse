@@ -3,17 +3,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Home, Users, LayoutGrid, MessageCircle, Bell, ChevronDown, 
   Activity, Shield, MonitorPlay, X, LogOut, Settings, HelpCircle, 
-  Moon, MessageSquare, PlusCircle, PenTool, Flag, Star, MoreHorizontal, Menu, UserPlus,
+  Moon, PlusCircle, PenTool, Flag, Star, MoreHorizontal, Menu, UserPlus,
   Ticket
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useMessenger } from '../context/MessengerContext'; // Import Context
+import { useMessenger } from '../context/MessengerContext';
 import { collection, query, where, limit, onSnapshot, orderBy, updateDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { UserProfile, Notification } from '../types';
 import { cn } from '../lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { Messenger } from './Messenger';
 
 // Shadcn Components
 import { Button } from './ui/Button';
@@ -23,10 +22,7 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent
+  DropdownMenuGroup
 } from './ui/DropdownMenu';
 import { 
   Popover, 
@@ -56,7 +52,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const { user, userProfile, logout } = useAuth();
-  const { isOpen, toggleMessenger, closeChat } = useMessenger(); // Use Context
+  const { isOpen, toggleMessenger } = useMessenger(); // Use Context
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,7 +68,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     { id: 'feed', icon: Home, label: 'Home' },
     { id: 'friends', icon: Users, label: 'Friends' }, 
     { id: 'videos', icon: MonitorPlay, label: 'Watch' },
-    // Marketplace removed
   ];
 
   if (userProfile?.role === 'admin') {
@@ -430,17 +425,20 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
             </PopoverContent>
           </Popover>
 
-          {/* Messenger Popover (Updated: Controlled via Context) */}
-          <Popover open={isOpen} onOpenChange={(open) => !open && closeChat()}>
-            <PopoverTrigger asChild>
-               <Button onClick={toggleMessenger} variant="ghost" size="icon" className="rounded-full bg-slate-100/50 hover:bg-synapse-50 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-synapse-600 h-10 w-10 transition-colors">
-                  <MessageCircle className="w-5 h-5" />
-               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="p-0 border-none bg-transparent shadow-none" align="end" sideOffset={10}>
-               <Messenger />
-            </PopoverContent>
-          </Popover>
+          {/* Messenger Trigger (Toggles Global Widget) */}
+          <Button 
+            onClick={toggleMessenger} 
+            variant="ghost" 
+            size="icon" 
+            className={cn(
+              "rounded-full h-10 w-10 transition-colors",
+              isOpen 
+                ? "bg-synapse-100 text-synapse-600 hover:bg-synapse-200 dark:bg-synapse-900/50 dark:text-synapse-400"
+                : "bg-slate-100/50 hover:bg-synapse-50 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-synapse-600"
+            )}
+          >
+             <MessageCircle className={cn("w-5 h-5", isOpen && "fill-current")} />
+          </Button>
 
           {/* Notifications Popover */}
           <Popover>

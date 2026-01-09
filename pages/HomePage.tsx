@@ -14,6 +14,7 @@ import { SettingsPage } from '../components/SettingsPage';
 import { HelpPage } from '../components/HelpPage';
 import { DisplayPage } from '../components/DisplayPage';
 import { Header } from '../components/Header';
+import { Messenger } from '../components/Messenger';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
@@ -144,6 +145,9 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Global Messenger Widget */}
+        <Messenger />
       </div>
     </div>
   );
