@@ -43,6 +43,7 @@ export interface UserProfile {
   isOnline?: boolean;
   lastSeen?: any;
   blockedUsers?: string[]; // Array of UIDs blocked by this user
+  isBanned?: boolean; // Admin ban status
 
   // Extended Details
   work?: string; // Company
@@ -58,6 +59,17 @@ export interface UserProfile {
   
   // Settings
   settings?: UserSettings;
+}
+
+export interface Report {
+  id: string;
+  reporterId: string;
+  reportedId: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  timestamp: any;
+  reporter?: UserProfile; // For UI
+  reported?: UserProfile; // For UI
 }
 
 export interface Post {

@@ -270,8 +270,26 @@ export const Messenger: React.FC = () => {
       }
   };
 
-  const handleReportUser = () => {
-      toast("User reported. We will review this shortly.", "success");
+  const handleReportUser = async () => {
+      if (!user || !partnerProfile) return;
+      
+      // Simple prompt for now
+      const reason = window.prompt("Please provide a reason for reporting this user:");
+      if (!reason) return; // User cancelled
+
+      try {
+          await addDoc(collection(db, 'reports'), {
+              reporterId: user.uid,
+              reportedId: partnerProfile.uid,
+              reason: reason,
+              status: 'pending',
+              timestamp: serverTimestamp()
+          });
+          toast("User reported. Admins will review shortly.", "success");
+      } catch (e) {
+          console.error(e);
+          toast("Failed to submit report. Please try again.", "error");
+      }
   };
 
   const updateChatSettings = async (key: string, value: any) => {
