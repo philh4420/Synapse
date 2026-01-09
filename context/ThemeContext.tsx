@@ -22,14 +22,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // --- 1. Theme Application Logic ---
     const applyTheme = () => {
+      // Remove existing classes first to prevent conflicts
       root.classList.remove('light', 'dark');
       
+      let effectiveTheme = theme;
       if (theme === 'system') {
         const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        root.classList.add(systemDark ? 'dark' : 'light');
-      } else {
-        root.classList.add(theme);
+        effectiveTheme = systemDark ? 'dark' : 'light';
       }
+      
+      root.classList.add(effectiveTheme);
+      root.setAttribute('data-theme', effectiveTheme); // Add data attribute for extra specificity support
     };
 
     applyTheme(); // Apply immediately

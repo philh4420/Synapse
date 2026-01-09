@@ -176,3 +176,36 @@ body.compact-mode .text-xl { font-size: 1.125rem !important; }
 .dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15) !important;
 }
+
+/* 
+  LIGHT MODE UTILITY OVERRIDES (Explicit Enforcement)
+  Ensures light mode colors are applied correctly when .light class is present.
+*/
+
+.light .bg-white {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+.light .bg-slate-50 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+.light .bg-slate-100 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+.light .bg-slate-200 {
+  background-color: #e2e8f0 !important;
+}
+.light .text-slate-900 { color: #0f172a !important; }
+.light .text-slate-800 { color: #1e293b !important; }
+.light .text-slate-700 { color: #334155 !important; }
+.light .text-slate-600 { color: #475569 !important; }
+.light .text-slate-500 { color: #64748b !important; }
+
+/* Ensure body uses light mode variables when class is light */
+.light body {
+  background-color: #ffffff;
+  color: #0f172a;
+}
