@@ -559,21 +559,17 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                         </div>
                     </DropdownMenuItem>
 
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="py-2.5 px-3 rounded-lg cursor-pointer hover:bg-slate-50">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center">
-                                    <HelpCircle className="w-5 h-5 text-slate-700" />
-                                </div>
-                                <span className="font-medium text-slate-900">Help & support</span>
+                    <DropdownMenuItem 
+                        className="py-2.5 px-3 rounded-lg cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                        onClick={() => setActiveTab('help')}
+                    >
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center">
+                                <HelpCircle className="w-5 h-5 text-slate-700" />
                             </div>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-64">
-                            <DropdownMenuItem className="py-2 cursor-pointer" onClick={() => setActiveTab('help')}>Help Center</DropdownMenuItem>
-                            <DropdownMenuItem className="py-2 cursor-pointer">Support Inbox</DropdownMenuItem>
-                            <DropdownMenuItem className="py-2 cursor-pointer">Report a problem</DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                            <span className="font-medium text-slate-900">Help & support</span>
+                        </div>
+                    </DropdownMenuItem>
 
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger className="py-2.5 px-3 rounded-lg cursor-pointer hover:bg-slate-50">
