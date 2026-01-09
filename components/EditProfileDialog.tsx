@@ -4,7 +4,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter,
+  DialogFooter, 
   DialogDescription
 } from './ui/Dialog';
 import { Button } from './ui/Button';
@@ -14,7 +14,7 @@ import { useToast } from '../context/ToastContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { uploadToCloudinary } from '../utils/upload';
-import { Loader2, Save, User, Briefcase, MapPin, Heart, Info, Image as ImageIcon, Camera, UploadCloud, ChevronRight } from 'lucide-react';
+import { Loader2, Save, User, Briefcase, MapPin, Heart, Info, Image as ImageIcon, Camera, UploadCloud, ChevronRight, GraduationCap } from 'lucide-react';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/Avatar';
@@ -121,29 +121,29 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border border-white/40 shadow-2xl bg-white/95 backdrop-blur-xl">
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border border-white/50 shadow-2xl bg-white/95 backdrop-blur-2xl">
         
         {/* Header */}
-        <DialogHeader className="px-8 py-6 border-b border-slate-100 flex-shrink-0 flex flex-row items-center justify-between bg-white/50">
+        <DialogHeader className="px-8 py-6 border-b border-slate-100 flex-shrink-0 flex flex-row items-center justify-between bg-white/60">
           <div>
-            <DialogTitle className="text-2xl font-bold text-slate-900 tracking-tight">Edit Profile</DialogTitle>
+            <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Edit Profile</DialogTitle>
             <DialogDescription className="text-slate-500 mt-1 font-medium">
-               Customize how others see you on Synapse.
+               Customize how your identity appears on Synapse.
             </DialogDescription>
           </div>
         </DialogHeader>
 
         <div className="flex flex-1 overflow-hidden">
            {/* Sidebar Navigation */}
-           <div className="w-[280px] hidden md:flex flex-col bg-slate-50/50 border-r border-slate-100 p-4 space-y-1 overflow-y-auto">
+           <div className="w-[280px] hidden md:flex flex-col bg-slate-50/60 border-r border-slate-100 p-4 space-y-1 overflow-y-auto">
               {tabs.map(tab => (
                  <button
                    key={tab.id}
                    onClick={() => setActiveTab(tab.id as TabKey)}
                    className={cn(
-                     "group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[15px] font-semibold transition-all duration-200 text-left relative overflow-hidden",
+                     "group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[15px] font-bold transition-all duration-300 text-left relative overflow-hidden",
                      activeTab === tab.id 
-                       ? "bg-white text-slate-900 shadow-sm ring-1 ring-black/5" 
+                       ? "bg-white text-slate-900 shadow-md ring-1 ring-black/5 scale-[1.02]" 
                        : "text-slate-500 hover:bg-white/60 hover:text-slate-700"
                    )}
                  >
@@ -155,30 +155,29 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                     </div>
                     <span className="flex-1">{tab.label}</span>
                     {activeTab === tab.id && (
-                       <div className="w-1.5 h-1.5 rounded-full bg-synapse-600 mr-1" />
+                       <div className="w-1.5 h-1.5 rounded-full bg-synapse-600 mr-1 shadow-[0_0_10px_rgba(79,70,229,0.5)]" />
                     )}
                  </button>
               ))}
            </div>
 
            {/* Main Content Area */}
-           <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-white relative">
+           <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-white relative">
               
-              {/* Tab Content Animation Wrapper could go here */}
-              <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 
                 {/* --- IMAGES TAB --- */}
                 {activeTab === 'images' && (
                   <div className="space-y-8">
                      <div className="flex items-center justify-between">
                         <h3 className="text-xl font-bold text-slate-900">Profile Visuals</h3>
-                        <span className="text-sm text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">Publicly visible</span>
+                        <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100 uppercase tracking-wide">Public</span>
                      </div>
                      
                      {/* Cover Photo Editor */}
                      <div className="space-y-3">
                         <label className="text-sm font-bold text-slate-700 uppercase tracking-wider ml-1">Cover Photo</label>
-                        <div className="group relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                        <div className="group relative w-full h-48 md:h-64 rounded-3xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm transition-all hover:shadow-lg hover:ring-2 hover:ring-synapse-500/20">
                            {coverPreview ? (
                               <img src={coverPreview} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Cover" />
                            ) : (
@@ -189,7 +188,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            )}
                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="secondary" className="bg-white/90 backdrop-blur-md text-slate-900 font-semibold shadow-lg hover:bg-white" onClick={() => coverInputRef.current?.click()}>
+                              <Button variant="secondary" className="bg-white/90 backdrop-blur-xl text-slate-900 font-bold shadow-xl hover:bg-white rounded-xl" onClick={() => coverInputRef.current?.click()}>
                                  <Camera className="w-4 h-4 mr-2" /> Change Cover
                               </Button>
                            </div>
@@ -200,9 +199,9 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                      {/* Profile Picture Editor */}
                      <div className="space-y-3">
                         <label className="text-sm font-bold text-slate-700 uppercase tracking-wider ml-1">Profile Picture</label>
-                        <div className="flex items-center gap-6 p-4 rounded-3xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center gap-6 p-6 rounded-[2rem] bg-slate-50 border border-slate-100">
                            <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
-                              <Avatar className="w-28 h-28 border-4 border-white shadow-lg ring-1 ring-slate-100 transition-transform group-hover:scale-105">
+                              <Avatar className="w-28 h-28 border-4 border-white shadow-xl ring-1 ring-slate-100 transition-transform group-hover:scale-105">
                                  <AvatarImage src={avatarPreview} />
                                  <AvatarFallback className="text-2xl bg-slate-200 text-slate-500">ME</AvatarFallback>
                               </Avatar>
@@ -211,15 +210,15 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                               </div>
                            </div>
                            <div className="flex-1 space-y-3">
-                              <p className="text-sm text-slate-600 leading-relaxed">
+                              <p className="text-sm text-slate-600 leading-relaxed font-medium">
                                  This helps people recognize you. It will appear on your posts, comments, and messages.
                               </p>
                               <div className="flex gap-3">
-                                  <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl" onClick={() => avatarInputRef.current?.click()}>
+                                  <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl px-4 font-bold" onClick={() => avatarInputRef.current?.click()}>
                                      <UploadCloud className="w-4 h-4 mr-2" /> Upload New
                                   </Button>
                                   {avatarPreview && avatarPreview !== userProfile?.photoURL && (
-                                    <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 rounded-xl" onClick={() => { setAvatarFile(null); setAvatarPreview(userProfile?.photoURL || ''); }}>
+                                    <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 rounded-xl px-4 font-bold" onClick={() => { setAvatarFile(null); setAvatarPreview(userProfile?.photoURL || ''); }}>
                                        Reset
                                     </Button>
                                   )}
@@ -239,7 +238,9 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            <h3 className="text-xl font-bold text-slate-900">Identity & Intro</h3>
                            <p className="text-slate-500 text-sm mt-1">Set your public display name and bio.</p>
                         </div>
-                        <User className="w-10 h-10 text-indigo-100" />
+                        <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-500">
+                           <User className="w-8 h-8" />
+                        </div>
                      </div>
                      
                      <div className="space-y-6">
@@ -261,7 +262,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                                  placeholder="Tell the world a little bit about yourself..."
                                  maxLength={101}
                               />
-                              <div className="absolute bottom-3 right-3 text-xs font-semibold text-slate-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur-sm border border-slate-100">
+                              <div className="absolute bottom-3 right-3 text-xs font-bold text-slate-400 bg-white/80 px-2 py-1 rounded-lg backdrop-blur-sm border border-slate-100 shadow-sm">
                                  {formData.bio?.length || 0}/101
                               </div>
                            </div>
@@ -278,14 +279,16 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            <h3 className="text-xl font-bold text-slate-900">Experience</h3>
                            <p className="text-slate-500 text-sm mt-1">Share your professional and academic journey.</p>
                         </div>
-                        <Briefcase className="w-10 h-10 text-amber-100" />
+                        <div className="p-3 bg-amber-50 rounded-2xl text-amber-500">
+                           <Briefcase className="w-8 h-8" />
+                        </div>
                      </div>
                      
-                     <div className="grid gap-6 p-1">
-                        <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                           <div className="flex items-center gap-2 mb-2">
-                              <div className="p-2 bg-amber-100 text-amber-600 rounded-lg"><Briefcase className="w-4 h-4" /></div>
-                              <h4 className="font-bold text-slate-900">Work</h4>
+                     <div className="grid gap-6">
+                        <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 hover:border-amber-200 transition-colors">
+                           <div className="flex items-center gap-3 mb-2">
+                              <div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl shadow-sm"><Briefcase className="w-5 h-5" /></div>
+                              <h4 className="font-bold text-slate-900 text-lg">Work</h4>
                            </div>
                            <Input 
                               label="Company" 
@@ -303,10 +306,10 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            />
                         </div>
 
-                        <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                           <div className="flex items-center gap-2 mb-2">
-                              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><User className="w-4 h-4" /></div>
-                              <h4 className="font-bold text-slate-900">Education</h4>
+                        <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 hover:border-blue-200 transition-colors">
+                           <div className="flex items-center gap-3 mb-2">
+                              <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl shadow-sm"><GraduationCap className="w-5 h-5" /></div>
+                              <h4 className="font-bold text-slate-900 text-lg">Education</h4>
                            </div>
                            <Input 
                               label="College / University" 
@@ -335,7 +338,9 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            <h3 className="text-xl font-bold text-slate-900">Locations</h3>
                            <p className="text-slate-500 text-sm mt-1">Where are you currently located?</p>
                         </div>
-                        <MapPin className="w-10 h-10 text-emerald-100" />
+                        <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-500">
+                           <MapPin className="w-8 h-8" />
+                        </div>
                      </div>
                      <div className="space-y-6">
                         <Input 
@@ -364,7 +369,9 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            <h3 className="text-xl font-bold text-slate-900">Basic Info</h3>
                            <p className="text-slate-500 text-sm mt-1">Manage your personal details.</p>
                         </div>
-                        <Info className="w-10 h-10 text-blue-100" />
+                        <div className="p-3 bg-blue-50 rounded-2xl text-blue-500">
+                           <Info className="w-8 h-8" />
+                        </div>
                      </div>
                      
                      <div className="space-y-6">
@@ -386,7 +393,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                               <label className="text-sm font-bold text-slate-700 ml-1">Gender</label>
                               <div className="relative">
                                  <select 
-                                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none font-medium"
                                     value={formData.gender || ''}
                                     onChange={(e) => handleChange('gender', e.target.value)}
                                  >
@@ -409,9 +416,9 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                         />
                         
                         <div className="p-4 bg-slate-50 rounded-2xl text-sm flex items-start gap-3 border border-slate-100">
-                           <Info className="w-5 h-5 text-slate-400 mt-0.5" />
+                           <Info className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
                            <div>
-                              <span className="font-semibold text-slate-700">Account Email:</span> <span className="text-slate-600">{user?.email}</span>
+                              <span className="font-bold text-slate-700">Account Email:</span> <span className="text-slate-600 font-medium">{user?.email}</span>
                               <p className="text-slate-400 text-xs mt-1">To change your email, please visit Account Settings.</p>
                            </div>
                         </div>
@@ -427,14 +434,16 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            <h3 className="text-xl font-bold text-slate-900">Family & Relationships</h3>
                            <p className="text-slate-500 text-sm mt-1">Share your relationship status.</p>
                         </div>
-                        <Heart className="w-10 h-10 text-pink-100" />
+                        <div className="p-3 bg-pink-50 rounded-2xl text-pink-500">
+                           <Heart className="w-8 h-8" />
+                        </div>
                      </div>
                      <div className="space-y-4">
                         <div className="space-y-1.5">
                            <label className="text-sm font-bold text-slate-700 ml-1">Relationship Status</label>
                            <div className="relative">
                               <select 
-                                 className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none text-[15px]"
+                                 className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none text-[15px] font-medium"
                                  value={formData.relationshipStatus || 'Single'}
                                  onChange={(e) => handleChange('relationshipStatus', e.target.value)}
                               >
@@ -449,11 +458,11 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
                            </div>
                         </div>
                         
-                        <div className="p-6 bg-slate-50 text-slate-500 text-sm rounded-3xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-3 mt-6">
-                           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-                              <Heart className="w-6 h-6 text-pink-300" />
+                        <div className="p-8 bg-slate-50 text-slate-500 text-sm rounded-[2rem] border border-dashed border-slate-200 text-center flex flex-col items-center gap-4 mt-6">
+                           <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
+                              <Heart className="w-8 h-8 text-pink-300" />
                            </div>
-                           <p>Family member linking is coming in the next update.</p>
+                           <p className="font-medium">Family member linking is coming in the next update.</p>
                         </div>
                      </div>
                   </div>
@@ -464,10 +473,10 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ open, onOp
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-8 py-5 border-t border-slate-100 bg-white/80 backdrop-blur-md flex-shrink-0">
+        <DialogFooter className="px-8 py-5 border-t border-slate-100 bg-white/80 backdrop-blur-2xl flex-shrink-0">
           <div className="flex gap-3 w-full sm:w-auto">
-             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="rounded-xl hover:bg-slate-100 text-slate-600 font-medium">Cancel</Button>
-             <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto px-8 bg-synapse-600 hover:bg-synapse-700 text-white rounded-xl shadow-lg shadow-synapse-500/20 font-semibold transition-all hover:scale-[1.02]">
+             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="rounded-xl hover:bg-slate-100 text-slate-600 font-bold">Cancel</Button>
+             <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto px-8 bg-synapse-600 hover:bg-synapse-700 text-white rounded-xl shadow-lg shadow-synapse-500/30 font-bold transition-all hover:scale-[1.02]">
                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                Save Changes
              </Button>
