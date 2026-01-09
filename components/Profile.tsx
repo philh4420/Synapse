@@ -23,9 +23,10 @@ import { format } from 'date-fns';
 
 interface ProfileProps {
   targetUid?: string | null;
+  onViewProfile?: (uid: string) => void;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
+export const Profile: React.FC<ProfileProps> = ({ targetUid, onViewProfile }) => {
   const { userProfile: currentUserProfile, user } = useAuth();
   
   const [externalProfile, setExternalProfile] = useState<UserProfile | null>(null);
@@ -68,6 +69,8 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
   useEffect(() => {
     if (!viewedProfile) return;
 
+    setLoading(true);
+
     // 1. Fetch Posts
     const postsQuery = query(
       collection(db, 'posts'),
@@ -87,7 +90,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
       
       setPosts(postsData);
       
-      // Extract photos from posts
+      // Extract photos from posts for the photo tab
       const userPhotos = postsData
         .filter(p => p.image || (p.images && p.images.length > 0))
         .flatMap(p => p.images || (p.image ? [p.image] : []));
@@ -96,7 +99,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
       setLoading(false);
     });
 
-    // 2. Fetch Friends
+    // 2. Fetch Friends with Chunking (Fix for viewing other profiles' friends)
     const fetchFriends = async () => {
       if (!viewedProfile?.friends || viewedProfile.friends.length === 0) {
         setFriends([]);
@@ -112,13 +115,21 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
             return;
         }
 
-        // Limit to 10 for preview/tab
-        const friendIdsChunk = validFriendIds.slice(0, 10);
+        // Firestore 'in' query is limited to 10 items. We must chunk the requests.
+        const chunks = [];
+        const chunkSize = 10;
+        for (let i = 0; i < validFriendIds.length; i += chunkSize) {
+            chunks.push(validFriendIds.slice(i, i + chunkSize));
+        }
+
+        const promises = chunks.map(chunk => 
+            getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)))
+        );
         
-        const q = query(collection(db, 'users'), where(documentId(), 'in', friendIdsChunk));
-        const snap = await getDocs(q);
-        const friendList = snap.docs.map(d => d.data() as UserProfile);
-        setFriends(friendList);
+        const snapshots = await Promise.all(promises);
+        const allFriends = snapshots.flatMap(snap => snap.docs.map(d => d.data() as UserProfile));
+        
+        setFriends(allFriends);
       } catch (error) {
         console.error("Error fetching friends", error);
         setFriends([]);
@@ -245,11 +256,15 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
       <div className="p-2 pt-0">
         <div className="grid grid-cols-3 gap-2">
           {friends.slice(0, 9).map((friend) => (
-            <div key={friend.uid} className="cursor-pointer group text-center">
+            <div 
+              key={friend.uid} 
+              className="cursor-pointer group text-center"
+              onClick={() => onViewProfile?.(friend.uid)}
+            >
               <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 mb-1.5 shadow-sm border border-slate-100">
                 <img src={friend.photoURL || `https://ui-avatars.com/api/?name=${friend.displayName}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <p className="text-[12px] font-semibold text-slate-700 leading-tight truncate px-1">{friend.displayName?.split(' ')[0]}</p>
+              <p className="text-[12px] font-semibold text-slate-700 leading-tight truncate px-1 group-hover:text-synapse-600 transition-colors">{friend.displayName?.split(' ')[0]}</p>
             </div>
           ))}
           {friends.length === 0 && (
@@ -369,17 +384,21 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
         {friends.length > 0 ? (
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {friends.map(friend => (
-                 <div key={friend.uid} className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all group">
+                 <div 
+                   key={friend.uid} 
+                   className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all group cursor-pointer"
+                   onClick={() => onViewProfile?.(friend.uid)}
+                 >
                     <Avatar className="w-16 h-16 rounded-xl border border-slate-100">
                        <AvatarImage src={friend.photoURL || ''} />
                        <AvatarFallback>{friend.displayName?.[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                       <p className="font-bold text-slate-900 truncate">{friend.displayName}</p>
+                       <p className="font-bold text-slate-900 truncate group-hover:text-synapse-600 transition-colors">{friend.displayName}</p>
                        <p className="text-xs text-slate-500 font-medium">Synapse User</p>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100">
+                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
                           <MoreHorizontal className="w-4 h-4 text-slate-400" />
                        </Button>
                     </div>
@@ -427,61 +446,72 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
      </Card>
   );
 
-  const VideosTab = () => (
-     <Card className="p-6 bg-white/80 backdrop-blur-xl border-white/60 min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
-        <div className="flex justify-between items-center mb-6">
-           <h3 className="text-xl font-bold text-slate-900">Videos</h3>
-        </div>
-
-        {posts.filter(p => p.video).length > 0 ? (
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {posts.filter(p => p.video).map((post) => (
-                 <div key={post.id} className="aspect-video bg-black rounded-xl overflow-hidden relative group shadow-md border border-slate-200">
-                    <video src={post.video} className="w-full h-full object-cover" controls />
-                 </div>
-              ))}
+  const VideosTab = () => {
+     // Filter posts with videos
+     const videoPosts = posts.filter(p => p.video);
+     
+     return (
+        <Card className="p-6 bg-white/80 backdrop-blur-xl border-white/60 min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
+           <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Videos</h3>
            </div>
-        ) : (
-           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                 <MonitorPlay className="w-8 h-8 opacity-20" />
-              </div>
-              <p>No videos shared yet.</p>
-           </div>
-        )}
-     </Card>
-  );
 
-  const CheckInsTab = () => (
-     <Card className="p-6 bg-white/80 backdrop-blur-xl border-white/60 min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
-        <div className="flex justify-between items-center mb-6">
-           <h3 className="text-xl font-bold text-slate-900">Check-ins</h3>
-        </div>
-
-        {posts.filter(p => p.location).length > 0 ? (
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {posts.filter(p => p.location).map((post) => (
-                 <div key={post.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
-                    <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                       <MapPin className="w-6 h-6 fill-current" />
+           {videoPosts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {videoPosts.map((post) => (
+                    <div key={post.id} className="aspect-video bg-black rounded-xl overflow-hidden relative group shadow-md border border-slate-200">
+                       <video src={post.video} className="w-full h-full object-cover" controls />
                     </div>
-                    <div>
-                       <h4 className="font-bold text-slate-900 text-lg">{post.location}</h4>
-                       <p className="text-sm text-slate-500">{format(post.timestamp, 'MMMM do, yyyy')}</p>
-                    </div>
-                 </div>
-              ))}
-           </div>
-        ) : (
-           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                 <MapPin className="w-8 h-8 opacity-20" />
+                 ))}
               </div>
-              <p>No check-ins yet.</p>
+           ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                    <MonitorPlay className="w-8 h-8 opacity-20" />
+                 </div>
+                 <p>No videos shared yet.</p>
+                 {isOwnProfile && <p className="text-xs mt-2 text-synapse-500">Upload a video in a post to see it here.</p>}
+              </div>
+           )}
+        </Card>
+     );
+  };
+
+  const CheckInsTab = () => {
+     const locationPosts = posts.filter(p => p.location);
+
+     return (
+        <Card className="p-6 bg-white/80 backdrop-blur-xl border-white/60 min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
+           <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Check-ins</h3>
            </div>
-        )}
-     </Card>
-  );
+
+           {locationPosts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 {locationPosts.map((post) => (
+                    <div key={post.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                       <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-6 h-6 fill-current" />
+                       </div>
+                       <div>
+                          <h4 className="font-bold text-slate-900 text-lg">{post.location}</h4>
+                          <p className="text-sm text-slate-500">{format(post.timestamp, 'MMMM do, yyyy')}</p>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                    <MapPin className="w-8 h-8 opacity-20" />
+                 </div>
+                 <p>No check-ins yet.</p>
+                 {isOwnProfile && <p className="text-xs mt-2 text-synapse-500">Add a location to your posts to see it here.</p>}
+              </div>
+           )}
+        </Card>
+     );
+  };
 
   return (
     <div className="min-h-screen bg-[#F0F2F5]/50 -mt-6 pb-20">
@@ -551,9 +581,12 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid }) => {
                      </p>
                      
                      {/* Friends Stack */}
-                     <div className="flex justify-center md:justify-start -space-x-2.5">
+                     <div 
+                        className="flex justify-center md:justify-start -space-x-2.5 cursor-pointer"
+                        onClick={() => setActiveTab('Friends')}
+                     >
                         {friends.slice(0, 8).map((f, i) => (
-                           <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-slate-200 overflow-hidden shadow-sm" title={f.displayName}>
+                           <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-slate-200 overflow-hidden shadow-sm hover:z-10 hover:scale-110 transition-transform" title={f.displayName}>
                               <img src={f.photoURL || ''} className="w-full h-full object-cover" />
                            </div>
                         ))}

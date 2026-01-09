@@ -38,7 +38,7 @@ export const HomePage: React.FC = () => {
       case 'feed':
         return <Feed />;
       case 'profile':
-        return <Profile targetUid={viewedProfileUid} />;
+        return <Profile targetUid={viewedProfileUid} onViewProfile={handleViewProfile} />;
       case 'friends':
         return <FriendsPage onViewProfile={handleViewProfile} />;
       case 'memories':
