@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Image, Video, Smile, X, Loader2, Globe, MapPin, UserPlus, ChevronDown, 
@@ -61,7 +62,12 @@ const FEELINGS = [
 
 const EMOJIS = ['🙂', '😀', '😂', '😍', '🥰', '😎', '😭', '😡', '👍', '👎', '🎉', '🔥', '❤️', '💔', '✨', '🎁', '👋', '🙏', '🤔', '🙄', '😴', '🤮', '🤯', '🥳'];
 
-export const CreatePost: React.FC = () => {
+interface CreatePostProps {
+  communityId?: string;
+  placeholder?: string;
+}
+
+export const CreatePost: React.FC<CreatePostProps> = ({ communityId, placeholder }) => {
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   
@@ -273,7 +279,7 @@ export const CreatePost: React.FC = () => {
          }
       }
       
-      await addDoc(collection(db, 'posts'), {
+      const postData: any = {
         author: {
           name: userProfile?.displayName || user.displayName || 'Anonymous',
           handle: user.email ? `@${user.email.split('@')[0]}` : '@user',
@@ -295,7 +301,14 @@ export const CreatePost: React.FC = () => {
         comments: 0,
         shares: 0,
         likedByUsers: []
-      });
+      };
+
+      if (communityId) {
+        postData.communityId = communityId;
+        postData.privacy = 'public'; // Community posts are generally visible to members
+      }
+
+      await addDoc(collection(db, 'posts'), postData);
       
       // Reset
       setContent('');
@@ -354,7 +367,7 @@ export const CreatePost: React.FC = () => {
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <div className="flex-1 bg-slate-100/70 hover:bg-slate-200/70 transition-all cursor-pointer rounded-full px-5 py-2.5 flex items-center text-slate-500 font-medium text-[15px] select-none shadow-inner">
-                What's on your mind, {firstName}?
+                {placeholder || `What's on your mind, ${firstName}?`}
               </div>
             </DialogTrigger>
             
@@ -369,7 +382,7 @@ export const CreatePost: React.FC = () => {
                   </button>
                 )}
                 <DialogTitle className="text-center text-[18px] font-bold text-slate-800 tracking-tight">
-                  {subModal === 'none' ? 'Create Post' : 
+                  {subModal === 'none' ? (communityId ? 'Create Community Post' : 'Create Post') : 
                    subModal === 'feeling' ? 'How are you feeling?' :
                    subModal === 'location' ? 'Search for location' :
                    subModal === 'tag' ? 'Tag friends' : 'Choose a GIF'}
@@ -412,41 +425,49 @@ export const CreatePost: React.FC = () => {
                           {taggedUsers.length > 0 && <span className="font-normal text-slate-600"> with <span className="text-blue-600 font-medium">{taggedUsers.length} others</span></span>}
                         </div>
                         
-                        {/* Privacy Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 rounded-md px-2 py-1 text-xs font-bold text-slate-600 w-fit mt-1 cursor-pointer select-none transition-all border border-transparent hover:border-slate-300">
-                              {getPrivacyIcon(privacy)}
-                              <span>{getPrivacyLabel(privacy)}</span>
-                              <ChevronDown className="w-3 h-3 opacity-70" />
-                            </div>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-[300px] p-2 rounded-2xl shadow-xl border-slate-100">
-                            <div className="px-3 py-2 text-[17px] font-bold text-slate-900">Post Audience</div>
-                            <Separator className="mb-2 bg-slate-100" />
-                            <DropdownMenuItem onClick={() => setPrivacy('public')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
-                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Globe className="w-5 h-5 text-slate-700" /></div>
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-slate-900 text-base">Public</span>
-                                <span className="text-xs text-slate-500">Anyone on or off Synapse</span>
+                        {/* Privacy Dropdown (Hidden if in community) */}
+                        {!communityId && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 rounded-md px-2 py-1 text-xs font-bold text-slate-600 w-fit mt-1 cursor-pointer select-none transition-all border border-transparent hover:border-slate-300">
+                                {getPrivacyIcon(privacy)}
+                                <span>{getPrivacyLabel(privacy)}</span>
+                                <ChevronDown className="w-3 h-3 opacity-70" />
                               </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setPrivacy('friends')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
-                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Users className="w-5 h-5 text-slate-700" /></div>
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-slate-900 text-base">Friends</span>
-                                <span className="text-xs text-slate-500">Your friends on Synapse</span>
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setPrivacy('only_me')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
-                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Lock className="w-5 h-5 text-slate-700" /></div>
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-slate-900 text-base">Only me</span>
-                                <span className="text-xs text-slate-500">Only you can see this post</span>
-                              </div>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[300px] p-2 rounded-2xl shadow-xl border-slate-100">
+                              <div className="px-3 py-2 text-[17px] font-bold text-slate-900">Post Audience</div>
+                              <Separator className="mb-2 bg-slate-100" />
+                              <DropdownMenuItem onClick={() => setPrivacy('public')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Globe className="w-5 h-5 text-slate-700" /></div>
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-slate-900 text-base">Public</span>
+                                  <span className="text-xs text-slate-500">Anyone on or off Synapse</span>
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setPrivacy('friends')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Users className="w-5 h-5 text-slate-700" /></div>
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-slate-900 text-base">Friends</span>
+                                  <span className="text-xs text-slate-500">Your friends on Synapse</span>
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setPrivacy('only_me')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Lock className="w-5 h-5 text-slate-700" /></div>
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-slate-900 text-base">Only me</span>
+                                  <span className="text-xs text-slate-500">Only you can see this post</span>
+                                </div>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        {communityId && (
+                           <div className="flex items-center gap-1.5 bg-slate-100 rounded-md px-2 py-1 text-xs font-bold text-slate-600 w-fit mt-1">
+                              <Users className="w-3 h-3" />
+                              <span>Community Member</span>
+                           </div>
+                        )}
 
                       </div>
                     </div>
@@ -459,7 +480,7 @@ export const CreatePost: React.FC = () => {
                         ref={textAreaRef}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
-                        placeholder={`What's on your mind, ${firstName}?`}
+                        placeholder={placeholder || `What's on your mind, ${firstName}?`}
                         className={cn(
                           "w-full resize-none outline-none border-none focus:ring-0 p-1 bg-transparent placeholder:text-slate-400 font-normal leading-relaxed",
                           background 

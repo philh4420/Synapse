@@ -13,6 +13,7 @@ import { Events } from '../components/Events';
 import { SettingsPage } from '../components/SettingsPage';
 import { HelpPage } from '../components/HelpPage';
 import { DisplayPage } from '../components/DisplayPage';
+import { CommunitiesPage } from '../components/CommunitiesPage';
 import { Header } from '../components/Header';
 import { Messenger } from '../components/Messenger';
 import { Menu, X, Megaphone, AlertTriangle, Info } from 'lucide-react';
@@ -32,6 +33,8 @@ export const HomePage: React.FC = () => {
     const stored = localStorage.getItem('synapse_viewed_profile');
     return stored === 'null' || !stored ? null : stored;
   });
+
+  const [viewedCommunityId, setViewedCommunityId] = useState<string | null>(null);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { userProfile } = useAuth();
@@ -67,12 +70,21 @@ export const HomePage: React.FC = () => {
       // If manually clicking profile tab (e.g. from nav), reset to own profile
       setViewedProfileUid(null);
     }
+    if (tab !== 'communities') {
+       setViewedCommunityId(null);
+    }
   };
 
   const handleViewProfile = (uid: string) => {
     setViewedProfileUid(uid);
     setActiveTab('profile');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleViewCommunity = (id: string | null) => {
+     setViewedCommunityId(id);
+     setActiveTab('communities');
+     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderContent = () => {
@@ -91,6 +103,8 @@ export const HomePage: React.FC = () => {
         return <Pages />;
       case 'events':
         return <Events />;
+      case 'communities':
+        return <CommunitiesPage viewedCommunityId={viewedCommunityId} onViewCommunity={handleViewCommunity} />;
       case 'settings':
         return <SettingsPage />;
       case 'help':
@@ -114,8 +128,8 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  // Wide layout for everything except Feed (which mimics FB's narrow feed)
-  const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile' || activeTab === 'memories' || activeTab === 'bookmarks' || activeTab === 'pages' || activeTab === 'events' || activeTab === 'settings' || activeTab === 'help' || activeTab === 'display';
+  // Wide layout for most pages except Feed
+  const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile' || activeTab === 'memories' || activeTab === 'bookmarks' || activeTab === 'pages' || activeTab === 'events' || activeTab === 'communities' || activeTab === 'settings' || activeTab === 'help' || activeTab === 'display';
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 relative selection:bg-synapse-200 selection:text-synapse-900 transition-colors duration-300">
@@ -154,7 +168,7 @@ export const HomePage: React.FC = () => {
           
           {/* Left Sidebar */}
           <div className="hidden lg:block w-[280px] xl:w-[360px] flex-shrink-0 z-20">
-            <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
+            <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} onViewCommunity={handleViewCommunity} />
           </div>
 
           {/* Center Content */}
@@ -182,10 +196,13 @@ export const HomePage: React.FC = () => {
               <X />
             </button>
             <div className="space-y-4">
-              {['Feed', 'Friends', 'Pages', 'Events', 'Watch', 'Groups', 'Profile'].map((item) => (
+              {['Feed', 'Friends', 'Pages', 'Events', 'Watch', 'Communities', 'Profile'].map((item) => (
                 <button 
                   key={item}
-                  onClick={() => { handleTabChange(item.toLowerCase() === 'watch' ? 'videos' : item.toLowerCase()); setMobileMenuOpen(false); }}
+                  onClick={() => { 
+                     handleTabChange(item.toLowerCase() === 'watch' ? 'videos' : item.toLowerCase()); 
+                     setMobileMenuOpen(false); 
+                  }}
                   className="block w-full text-left text-2xl font-bold text-slate-800 dark:text-slate-100 py-4 border-b border-slate-100 dark:border-slate-800 hover:text-synapse-600 transition-colors"
                 >
                   {item}

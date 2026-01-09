@@ -108,6 +108,7 @@ export interface Post {
   location?: string; // e.g., "at New York City"
   taggedUsers?: string[]; // Array of display names
   gif?: string; // GIF URL
+  communityId?: string; // ID of the community this post belongs to
   
   // Sharing
   sharedPost?: {
@@ -159,6 +160,18 @@ export interface Page {
   ownerId: string;
   followers: number;
   verified: boolean;
+  timestamp: any;
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  description: string;
+  coverURL: string;
+  privacy: 'public' | 'private';
+  createdBy: string;
+  members: string[]; // Array of UIDs
+  memberCount: number;
   timestamp: any;
 }
 
