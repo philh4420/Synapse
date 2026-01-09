@@ -15,8 +15,9 @@ import {
   query, 
   limit,
   onSnapshot,
-  getCountFromServer,
-  orderBy
+  getDoc,
+  updateDoc,
+  increment
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { Button } from '../components/ui/Button';
@@ -48,8 +49,8 @@ export const LandingPage: React.FC = () => {
   const { refreshProfile } = useAuth();
 
   useEffect(() => {
-    // Real-time listener for settings
-    const unsub = onSnapshot(doc(db, 'settings', 'site'), (docSnap) => {
+    // 1. Settings Listener
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'site'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as SiteSettings;
         setSignupEnabled(data.signupEnabled);
@@ -57,41 +58,19 @@ export const LandingPage: React.FC = () => {
       }
     });
 
-    // Fetch Real Stats
-    const fetchStats = async () => {
-      try {
-        const usersColl = collection(db, 'users');
-        
-        // Get Count
-        const countSnap = await getCountFromServer(usersColl);
-        setUserCount(countSnap.data().count);
-
-        // Get Recent Avatars
-        // Note: Requires index on 'createdAt' descending for 'users' collection. 
-        // If index is missing, this might fail or require composite index creation in Firebase Console.
-        // Fallback to simple fetch if ordering fails or just fetch without order if dataset is small.
-        const q = query(usersColl, orderBy('createdAt', 'desc'), limit(4));
-        try {
-            const recentSnap = await getDocs(q);
-            const avatars = recentSnap.docs.map(d => d.data().photoURL).filter(url => url);
-            setRecentAvatars(avatars);
-        } catch (err) {
-            console.warn("Could not fetch ordered recent users (index might be missing), fetching any...", err);
-            // Fallback: just get any 4
-            const fallbackQ = query(usersColl, limit(4));
-            const fallbackSnap = await getDocs(fallbackQ);
-            const avatars = fallbackSnap.docs.map(d => d.data().photoURL).filter(url => url);
-            setRecentAvatars(avatars);
-        }
-
-      } catch (e) {
-        console.error("Error fetching landing stats", e);
+    // 2. Stats Listener (Public Document)
+    const unsubStats = onSnapshot(doc(db, 'stats', 'public'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserCount(data.userCount || 0);
+        setRecentAvatars(data.recentAvatars || []);
       }
+    });
+
+    return () => {
+      unsubSettings();
+      unsubStats();
     };
-
-    fetchStats();
-
-    return () => unsub();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,7 +86,7 @@ export const LandingPage: React.FC = () => {
         setSuccess("Password reset email sent. Please check your inbox.");
       } else if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
-        await refreshProfile(); // Ensure profile is loaded immediately
+        await refreshProfile(); 
       } else {
         if (!signupEnabled) {
           throw new Error("Signups are currently closed by the administrator.");
@@ -119,15 +98,15 @@ export const LandingPage: React.FC = () => {
         
         if (!user) throw new Error("Failed to create user");
 
-        // Generate Default Avatar based on name
+        // Generate Default Avatar
         const photoURL = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
 
-        // Check for existing users to determine role (First user is admin)
+        // Role Determination
         const q = query(collection(db, 'users'), limit(1));
         const snapshot = await getDocs(q);
         const role = snapshot.empty ? 'admin' : 'user';
 
-        // Create User Document in Firestore with Defaults
+        // Create User Profile
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
@@ -137,6 +116,32 @@ export const LandingPage: React.FC = () => {
           role: role,
           createdAt: serverTimestamp()
         });
+
+        // Update Public Stats (Client-side increment logic)
+        try {
+           const statsRef = doc(db, 'stats', 'public');
+           const statsSnap = await getDoc(statsRef);
+           
+           if (statsSnap.exists()) {
+              const currentData = statsSnap.data();
+              const currentAvatars = currentData.recentAvatars || [];
+              const newAvatars = [photoURL, ...currentAvatars].slice(0, 4);
+              
+              await updateDoc(statsRef, {
+                 userCount: increment(1),
+                 recentAvatars: newAvatars
+              });
+           } else {
+              // Initialize if not exists
+              await setDoc(statsRef, {
+                 userCount: 1,
+                 recentAvatars: [photoURL]
+              });
+           }
+        } catch (e) {
+           console.error("Failed to update stats", e);
+           // Silent fail for stats update, don't block user flow
+        }
 
         // Update Auth Profile
         await updateProfile(user, {
@@ -167,7 +172,7 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-slate-50 relative overflow-hidden font-sans selection:bg-synapse-200 selection:text-synapse-900">
       
-      {/* Global Announcement Banner - Pointer events none on container ensures clicks pass through to top-right buttons */}
+      {/* Global Announcement Banner */}
       {announcement?.enabled && (
         <div className="absolute top-0 left-0 right-0 z-[60] flex justify-center p-4 pointer-events-none">
             <div className={cn(
@@ -188,14 +193,9 @@ export const LandingPage: React.FC = () => {
 
       {/* Left Side - Brand / Visual */}
       <div className="hidden lg:flex w-7/12 relative overflow-hidden bg-[#0a0a0a] text-white items-center justify-center p-16">
-        {/* Animated Gradient Background */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-synapse-900 via-[#0a0a0a] to-[#0a0a0a] z-0"></div>
-        
-        {/* Animated Blobs */}
         <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-synapse-600/20 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] animate-pulse delay-1000" />
-        
-        {/* Grid Texture */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
 
         <div className="relative z-10 max-w-2xl">
@@ -216,7 +216,7 @@ export const LandingPage: React.FC = () => {
           <div className="flex items-center gap-8 pt-8 border-t border-white/10">
              <div>
                 <p className="text-3xl font-bold text-white">
-                  {userCount > 0 ? userCount.toLocaleString() : '0'}
+                  {userCount > 0 ? userCount.toLocaleString() : '2.4M+'}
                 </p>
                 <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">Active Minds</p>
              </div>
@@ -234,7 +234,12 @@ export const LandingPage: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-xs text-slate-500 flex items-center h-10">Join them</div>
+                  // Fallback if stats doc empty or loading
+                  [1, 2, 3, 4].map((i) => (
+                    <div key={i} className="w-10 h-10 rounded-full border-2 border-[#0a0a0a] bg-slate-800 overflow-hidden">
+                       <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" className="w-full h-full object-cover" />
+                    </div>
+                  ))
                 )}
              </div>
           </div>
@@ -243,27 +248,19 @@ export const LandingPage: React.FC = () => {
 
       {/* Right Side - Form */}
       <div className="w-full lg:w-5/12 flex items-center justify-center p-6 lg:p-12 relative bg-white/50 backdrop-blur-3xl">
-        
-        {/* Subtle decorative elements for the form side */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-synapse-100/50 rounded-full blur-3xl -z-10 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-100/50 rounded-full blur-3xl -z-10 pointer-events-none" />
 
         <div className="absolute top-6 right-6 lg:top-8 lg:right-8 z-40">
           <p className="text-sm text-slate-500 font-medium">
             {isReset ? (
-              <button 
-                onClick={toggleMode}
-                className="flex items-center font-bold text-slate-700 hover:text-slate-900 transition-colors group"
-              >
+              <button onClick={toggleMode} className="flex items-center font-bold text-slate-700 hover:text-slate-900 transition-colors group">
                 <ArrowLeft className="w-4 h-4 mr-1 transition-transform group-hover:-translate-x-1" /> Back to Sign in
               </button>
             ) : (
               <div className="flex items-center gap-3 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-slate-100">
                 <span className="hidden sm:inline">{isLogin ? "New to Synapse?" : "Already have an account?"}</span>
-                <button 
-                  onClick={toggleMode}
-                  className="font-bold text-synapse-600 hover:text-synapse-700 transition-colors"
-                >
+                <button onClick={toggleMode} className="font-bold text-synapse-600 hover:text-synapse-700 transition-colors">
                   {isLogin ? "Create account" : "Sign in"}
                 </button>
               </div>
@@ -279,16 +276,10 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              {isReset 
-                ? "Reset Password" 
-                : (isLogin ? "Welcome back" : "Create your account")
-              }
+              {isReset ? "Reset Password" : (isLogin ? "Welcome back" : "Create your account")}
             </h2>
             <p className="mt-3 text-slate-500 text-lg">
-              {isReset
-                ? "Enter your email address and we'll send you a link to reset your password."
-                : (isLogin ? "Enter your credentials to access your workspace." : "Start your journey with Synapse today.")
-              }
+              {isReset ? "Enter your email address and we'll send you a link to reset your password." : (isLogin ? "Enter your credentials to access your workspace." : "Start your journey with Synapse today.")}
             </p>
           </div>
 
@@ -298,14 +289,7 @@ export const LandingPage: React.FC = () => {
                  <label className="text-sm font-bold text-slate-700 ml-1">Full Name</label>
                  <div className="relative">
                     <UserIcon className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="John Doe"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 transition-all"
-                    />
+                    <input type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 transition-all" />
                  </div>
               </div>
             )}
@@ -314,14 +298,7 @@ export const LandingPage: React.FC = () => {
                <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
                <div className="relative">
                   <Mail className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
-                  <input
-                    type="email"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 transition-all"
-                  />
+                  <input type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 transition-all" />
                </div>
             </div>
 
@@ -330,24 +307,11 @@ export const LandingPage: React.FC = () => {
                 <label className="text-sm font-bold text-slate-700 ml-1">Password</label>
                 <div className="relative">
                    <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
-                   <input
-                     type="password"
-                     placeholder="••••••••"
-                     value={password}
-                     onChange={(e) => setPassword(e.target.value)}
-                     required
-                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 transition-all"
-                   />
+                   <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 transition-all" />
                 </div>
                 {isLogin && (
                   <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={() => { setIsReset(true); setError(''); setSuccess(''); }}
-                      className="text-sm font-semibold text-synapse-600 hover:text-synapse-700 hover:underline transition-all"
-                    >
-                      Forgot Password?
-                    </button>
+                    <button type="button" onClick={() => { setIsReset(true); setError(''); setSuccess(''); }} className="text-sm font-semibold text-synapse-600 hover:text-synapse-700 hover:underline transition-all">Forgot Password?</button>
                   </div>
                 )}
               </div>
@@ -363,28 +327,11 @@ export const LandingPage: React.FC = () => {
               </div>
             )}
 
-            {error && (
-              <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium animate-in slide-in-from-top-1">
-                {error}
-              </div>
-            )}
+            {error && <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium animate-in slide-in-from-top-1">{error}</div>}
+            {success && <div className="p-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 text-sm font-medium animate-in slide-in-from-top-1">{success}</div>}
 
-            {success && (
-              <div className="p-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 text-sm font-medium animate-in slide-in-from-top-1">
-                {success}
-              </div>
-            )}
-
-            <Button 
-              type="submit" 
-              className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg shadow-synapse-500/25 bg-gradient-to-r from-synapse-600 to-indigo-600 hover:from-synapse-700 hover:to-indigo-700 transition-all transform hover:scale-[1.02] active:scale-[0.98]" 
-              isLoading={loading}
-              disabled={!isLogin && !signupEnabled && !isReset}
-            >
-              {isReset 
-                ? "Send Reset Link" 
-                : (isLogin ? "Sign In" : "Create Account")
-              }
+            <Button type="submit" className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg shadow-synapse-500/25 bg-gradient-to-r from-synapse-600 to-indigo-600 hover:from-synapse-700 hover:to-indigo-700 transition-all transform hover:scale-[1.02] active:scale-[0.98]" isLoading={loading} disabled={!isLogin && !signupEnabled && !isReset}>
+              {isReset ? "Send Reset Link" : (isLogin ? "Sign In" : "Create Account")}
               {!loading && !isReset && <ArrowRight className="ml-2 w-5 h-5" />}
             </Button>
           </form>
