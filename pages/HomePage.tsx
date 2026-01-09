@@ -15,9 +15,12 @@ import { HelpPage } from '../components/HelpPage';
 import { DisplayPage } from '../components/DisplayPage';
 import { Header } from '../components/Header';
 import { Messenger } from '../components/Messenger';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Megaphone, AlertTriangle, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { SiteSettings } from '../types';
 
 export const HomePage: React.FC = () => {
   // Initialize state from localStorage if available
@@ -32,6 +35,7 @@ export const HomePage: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { userProfile } = useAuth();
+  const [announcement, setAnnouncement] = useState<SiteSettings['announcement']>(undefined);
 
   // Persist state changes
   useEffect(() => {
@@ -45,6 +49,17 @@ export const HomePage: React.FC = () => {
       localStorage.removeItem('synapse_viewed_profile');
     }
   }, [viewedProfileUid]);
+
+  // Listen for Global Announcements
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'site'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as SiteSettings;
+        setAnnouncement(data.announcement);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -115,8 +130,27 @@ export const HomePage: React.FC = () => {
       <div className="relative z-10">
         <Header activeTab={activeTab} setActiveTab={handleTabChange} />
 
+        {/* Global Announcement Banner */}
+        {announcement?.enabled && (
+          <div className="fixed top-[4.5rem] lg:top-24 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none animate-in slide-in-from-top-2 duration-500">
+             <div className={cn(
+               "pointer-events-auto flex items-center gap-3 px-6 py-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/20 text-white max-w-2xl w-full",
+               announcement.type === 'error' ? "bg-rose-600/95" : 
+               announcement.type === 'warning' ? "bg-amber-500/95" : 
+               "bg-synapse-600/95"
+             )}>
+                <div className="bg-white/20 p-1.5 rounded-full shrink-0">
+                   {announcement.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : 
+                    announcement.type === 'warning' ? <Megaphone className="w-5 h-5" /> : 
+                    <Info className="w-5 h-5" />}
+                </div>
+                <p className="font-medium text-[15px] flex-1">{announcement.message}</p>
+             </div>
+          </div>
+        )}
+
         {/* Increased top padding (pt-24) to account for the floating header island */}
-        <div className="pt-24 flex justify-between min-h-screen">
+        <div className={cn("pt-24 flex justify-between min-h-screen", announcement?.enabled ? "pt-40 lg:pt-44" : "pt-24")}>
           
           {/* Left Sidebar */}
           <div className="hidden lg:block w-[280px] xl:w-[360px] flex-shrink-0 z-20">

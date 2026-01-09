@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
@@ -8,18 +9,20 @@ import {
 import { 
   doc, 
   setDoc, 
-  getDoc, 
   collection, 
   serverTimestamp, 
   getDocs, 
   query, 
-  limit 
+  limit,
+  onSnapshot 
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Mail, Lock, User as UserIcon, ArrowRight, Activity, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Activity, ArrowLeft, AlertCircle, Info, Megaphone, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { SiteSettings } from '../types';
+import { cn } from '../lib/utils';
 
 // Default Assets
 const DEFAULT_COVER_URL = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop";
@@ -34,21 +37,19 @@ export const LandingPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [signupEnabled, setSignupEnabled] = useState(true);
+  const [announcement, setAnnouncement] = useState<SiteSettings['announcement']>(undefined);
   const { refreshProfile } = useAuth();
 
   useEffect(() => {
-    const checkSettings = async () => {
-      try {
-        const docRef = doc(db, 'settings', 'site');
-        const settingsSnap = await getDoc(docRef);
-        if (settingsSnap.exists()) {
-          setSignupEnabled(settingsSnap.data()?.signupEnabled);
-        }
-      } catch (err) {
-        console.log("Settings not found, assuming defaults.");
+    // Real-time listener for settings
+    const unsub = onSnapshot(doc(db, 'settings', 'site'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as SiteSettings;
+        setSignupEnabled(data.signupEnabled);
+        setAnnouncement(data.announcement);
       }
-    };
-    checkSettings();
+    });
+    return () => unsub();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,7 +123,27 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 relative">
+      
+      {/* Global Announcement Banner */}
+      {announcement?.enabled && (
+        <div className="absolute top-0 left-0 right-0 z-50 flex justify-center p-4">
+            <div className={cn(
+              "flex items-center gap-3 px-6 py-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/20 text-white max-w-2xl w-full animate-in slide-in-from-top-2 duration-500",
+              announcement.type === 'error' ? "bg-rose-600/95" : 
+              announcement.type === 'warning' ? "bg-amber-500/95" : 
+              "bg-synapse-600/95"
+            )}>
+              <div className="bg-white/20 p-1.5 rounded-full shrink-0">
+                  {announcement.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : 
+                  announcement.type === 'warning' ? <Megaphone className="w-5 h-5" /> : 
+                  <Info className="w-5 h-5" />}
+              </div>
+              <p className="font-medium text-[15px] flex-1">{announcement.message}</p>
+            </div>
+        </div>
+      )}
+
       {/* Left Side - Brand / Visual */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-synapse-950 text-white items-center justify-center p-12">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
