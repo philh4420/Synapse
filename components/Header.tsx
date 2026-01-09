@@ -69,7 +69,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     { id: 'feed', icon: Home, label: 'Home' },
     { id: 'friends', icon: Users, label: 'Friends' }, 
     { id: 'videos', icon: MonitorPlay, label: 'Watch' },
-    { id: 'marketplace', icon: Store, label: 'Marketplace' },
   ];
 
   if (userProfile?.role === 'admin') {
