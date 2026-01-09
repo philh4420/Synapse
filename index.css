@@ -1,5 +1,146 @@
+/* 
+  SYNAPSE 2026+ CSS RESET & CORE FUNDAMENTALS
+  Architected for next-generation interfaces.
+*/
 
-/* Custom Utilities & Overrides */
+/* 1. Organic Box Model */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+
+/* 2. Fluid Document Flow */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden; /* Prevent horizontal scroll from animations */
+}
+
+/* 3. Intelligent Media Defaults */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  font-style: italic;
+  shape-margin: 0.75rem;
+  user-select: none; /* Prevent accidental dragging of UI elements */
+}
+
+/* 4. Modern Typography (2026 Standards) */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance; /* Aesthetic heading balancing */
+  font-weight: inherit;
+  line-height: 1.1;
+  overflow-wrap: break-word;
+}
+
+p {
+  text-wrap: pretty; /* Orphan prevention */
+  max-width: 75ch; /* Readable line length default */
+}
+
+/* 5. Interactive Elements */
+button, input, optgroup, select, textarea {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: inherit;
+  color: inherit;
+  background-color: transparent;
+  outline: none; /* Managed via :focus-visible */
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation; /* Eliminate click delay on mobile */
+}
+
+/* 6. Link Behavior */
+a {
+  color: inherit;
+  text-decoration: inherit;
+  cursor: pointer;
+}
+
+/* 7. Selection Styling */
+::selection {
+  background-color: #c7d2fe; /* Synapse-200 */
+  color: #312e81; /* Synapse-900 */
+}
+
+.dark ::selection {
+  background-color: #4338ca; /* Synapse-700 */
+  color: #e0e7ff; /* Synapse-100 */
+}
+
+/* 8. Accessibility Focus Ring */
+:focus-visible {
+  outline: 2px solid #6366f1; /* Synapse-500 */
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 9. Scrollbar Customization (Modern & Webkit) */
+/* Firefox */
+@supports (scrollbar-color: auto) {
+  * {
+    scrollbar-color: #cbd5e1 transparent; /* Thumb Track */
+    scrollbar-width: thin;
+  }
+  .dark * {
+    scrollbar-color: #334155 transparent;
+  }
+}
+
+/* Webkit / Chrome / Safari */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8; /* slate-400 */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #334155; /* slate-700 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #475569; /* slate-600 */
+}
+
+/* 10. Mobile Optimization */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ========================================= */
+/* EXISTING UTILITIES & OVERRIDES */
+/* ========================================= */
 
 .glass-panel {
   background: rgba(255, 255, 255, 0.7);
