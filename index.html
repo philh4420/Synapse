@@ -63,8 +63,11 @@
         --radius-md: calc(var(--radius) - 2px);
         --radius-sm: calc(var(--radius) - 4px);
       }
+    </style>
 
-      /* Custom Utilities */
+    <style>
+      /* Custom Utilities & Overrides (Outside Tailwind Compiler) */
+      
       .glass-panel {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(12px);
@@ -105,7 +108,7 @@
         --radius: 0.75rem;
       }
 
-      /* Dark Mode Overrides */
+      /* Dark Mode Variables */
       .dark {
         --background: 222.2 84% 4.9%;
         --foreground: 210 40% 98%;
@@ -129,20 +132,18 @@
       }
       
       body {
-        font-family: var(--font-sans);
+        font-family: "Plus Jakarta Sans", sans-serif;
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
-        transition: background-color 0.3s ease, color 0.3s ease, font-size 0.2s ease;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
 
       /* Accessibility & Display Settings Classes */
       
-      /* High Contrast */
       body.high-contrast {
         filter: contrast(125%);
       }
 
-      /* Reduce Motion */
       body.reduce-motion * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
@@ -150,7 +151,6 @@
         scroll-behavior: auto !important;
       }
 
-      /* Font Sizing (Scaling base font size affects rems) */
       html.text-small {
         font-size: 14px;
       }
@@ -161,7 +161,6 @@
         font-size: 20px;
       }
 
-      /* Compact Mode */
       body.compact-mode .p-4 { padding: 0.5rem !important; }
       body.compact-mode .p-6 { padding: 1rem !important; }
       body.compact-mode .gap-4 { gap: 0.5rem !important; }
@@ -169,10 +168,10 @@
       body.compact-mode .h-12 { height: 2.5rem !important; }
       body.compact-mode .text-xl { font-size: 1.125rem !important; }
 
-      /* Dark Mode Utility Overrides for Hardcoded Colors */
+      /* Dark Mode Utility Overrides */
       .dark .bg-white {
         background-color: #1e293b !important; /* slate-800 */
-        color: #f1f5f9;
+        color: #f1f5f9 !important;
       }
       .dark .text-slate-900 {
         color: #f8fafc !important;
@@ -189,12 +188,25 @@
       .dark .bg-slate-50, .dark .bg-slate-100 {
         background-color: #0f172a !important; /* slate-950 */
         border-color: #334155 !important;
+        color: #f8fafc !important;
       }
       .dark .border-slate-100, .dark .border-slate-200 {
         border-color: #334155 !important;
       }
       .dark .bg-white\/80 {
         background-color: rgba(30, 41, 59, 0.8) !important;
+      }
+      .dark .bg-white\/90 {
+        background-color: rgba(30, 41, 59, 0.9) !important;
+      }
+      .dark .bg-white\/95 {
+        background-color: rgba(30, 41, 59, 0.95) !important;
+      }
+      /* Ensure inputs in dark mode are readable */
+      .dark input, .dark textarea, .dark select {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
       }
     </style>
     
