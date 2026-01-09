@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, MoreHorizontal, Edit, Search, ArrowLeft, 
   Smile, Image as ImageIcon, Phone, Video, Info, X, Bell, Ban, ThumbsUp,
-  ChevronDown, Flag, UserX, UserCheck, Check, Reply, Trash2, Edit3
+  ChevronDown, Flag, UserX, UserCheck, Check, Reply, Trash2, Edit3, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMessenger } from '../context/MessengerContext';
@@ -20,6 +20,14 @@ import { cn } from '../lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
 import { uploadToCloudinary } from '../utils/upload';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/Popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from './ui/Dialog';
 
 // Theme Options
 const THEMES = [
@@ -58,6 +66,11 @@ export const Messenger: React.FC = () => {
   const [sharedPhotos, setSharedPhotos] = useState<string[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   
+  // Reporting State
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
+
   // Real-time Partner Info
   const [partnerProfile, setPartnerProfile] = useState<UserProfile | null>(null);
   
@@ -270,25 +283,31 @@ export const Messenger: React.FC = () => {
       }
   };
 
-  const handleReportUser = async () => {
-      if (!user || !partnerProfile) return;
-      
-      // Simple prompt for now
-      const reason = window.prompt("Please provide a reason for reporting this user:");
-      if (!reason) return; // User cancelled
+  const openReportDialog = () => {
+      if (!partnerProfile) return;
+      setReportReason('');
+      setIsReportDialogOpen(true);
+  };
 
+  const handleReportSubmit = async () => {
+      if (!user || !partnerProfile || !reportReason.trim()) return;
+      
+      setIsReporting(true);
       try {
           await addDoc(collection(db, 'reports'), {
               reporterId: user.uid,
               reportedId: partnerProfile.uid,
-              reason: reason,
+              reason: reportReason,
               status: 'pending',
               timestamp: serverTimestamp()
           });
           toast("User reported. Admins will review shortly.", "success");
+          setIsReportDialogOpen(false);
       } catch (e) {
           console.error(e);
           toast("Failed to submit report. Please try again.", "error");
+      } finally {
+          setIsReporting(false);
       }
   };
 
@@ -517,6 +536,7 @@ export const Messenger: React.FC = () => {
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex flex-col md:inset-auto md:bottom-0 md:right-8 md:w-[900px] md:h-[650px] bg-white dark:bg-slate-900 md:rounded-t-2xl md:shadow-2xl border border-b-0 border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-10 md:flex-row overflow-hidden font-sans">
       
       {/* --- Sidebar (Chat List) --- */}
@@ -1036,7 +1056,7 @@ export const Messenger: React.FC = () => {
                         {isBlockedByMe ? <><UserCheck className="w-4 h-4" /> Unblock User</> : <><UserX className="w-4 h-4" /> Block User</>}
                      </button>
                      <button 
-                        onClick={handleReportUser}
+                        onClick={openReportDialog}
                         className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:bg-slate-50 w-full p-2 rounded-lg transition-colors"
                      >
                         <Flag className="w-4 h-4" /> Report
@@ -1047,6 +1067,40 @@ export const Messenger: React.FC = () => {
          </div>
       )}
     </div>
+
+    {/* Report Dialog */}
+    <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="w-5 h-5" /> Report User
+                </DialogTitle>
+                <DialogDescription>
+                    Please tell us why you are reporting {partnerProfile?.displayName}. Your report will be confidential and reviewed by our administration team.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <label className="text-sm font-medium text-slate-700 mb-2 block">Reason for report</label>
+                <textarea
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:border-synapse-500 min-h-[100px] resize-none"
+                    placeholder="E.g. Harassment, Spam, Inappropriate content..."
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsReportDialogOpen(false)}>Cancel</Button>
+                <Button 
+                    variant="destructive" 
+                    onClick={handleReportSubmit} 
+                    disabled={isReporting || !reportReason.trim()}
+                >
+                    {isReporting ? "Submitting..." : "Submit Report"}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
