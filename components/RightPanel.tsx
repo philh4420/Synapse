@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Search, MoreHorizontal, Video, Gift, Plus, ExternalLink, Trash2, Cake, ArrowRight } from 'lucide-react';
+import { Search, MoreHorizontal, Video, Gift, Plus, ExternalLink, Trash2, Cake, ArrowRight, AlertTriangle, Loader2 } from 'lucide-react';
 import { collection, query, limit, getDocs, addDoc, deleteDoc, doc, onSnapshot, where, documentId } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { UserProfile, SponsoredAd } from '../types';
@@ -22,6 +22,14 @@ import {
   SheetClose,
   SheetDescription
 } from './ui/Sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from './ui/Dialog';
 
 export const RightPanel: React.FC = () => {
   const { user, userProfile } = useAuth();
@@ -39,6 +47,9 @@ export const RightPanel: React.FC = () => {
   const [newAdLink, setNewAdLink] = useState('');
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
   const [isCreatingAd, setIsCreatingAd] = useState(false);
+
+  // Ad Deletion State
+  const [deleteAdId, setDeleteAdId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -134,14 +145,15 @@ export const RightPanel: React.FC = () => {
     }
   };
 
-  const handleDeleteAd = async (adId: string) => {
-    if (confirm("Are you sure you want to remove this ad?")) {
-      try {
-        await deleteDoc(doc(db, 'ads', adId));
-        toast("Ad removed", "info");
-      } catch (error) {
-        toast("Failed to remove ad", "error");
-      }
+  const confirmDeleteAd = async () => {
+    if (!deleteAdId) return;
+    try {
+      await deleteDoc(doc(db, 'ads', deleteAdId));
+      toast("Ad removed successfully", "success");
+    } catch (error) {
+      toast("Failed to remove ad", "error");
+    } finally {
+      setDeleteAdId(null);
     }
   };
 
@@ -233,7 +245,7 @@ export const RightPanel: React.FC = () => {
               {/* Admin Delete Option */}
               {userProfile?.role === 'admin' && (
                 <button 
-                  onClick={(e) => { e.preventDefault(); handleDeleteAd(ad.id); }}
+                  onClick={(e) => { e.preventDefault(); setDeleteAdId(ad.id); }}
                   className="absolute -top-2 -right-2 p-1.5 bg-white text-red-500 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-red-50"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -327,6 +339,24 @@ export const RightPanel: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Ad Confirmation Dialog */}
+      <Dialog open={!!deleteAdId} onOpenChange={(open) => !open && setDeleteAdId(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" /> Remove Advertisement
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to remove this ad? This action cannot be undone and it will no longer appear for users.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteAdId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDeleteAd}>Remove Ad</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

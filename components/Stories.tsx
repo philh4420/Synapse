@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Card } from './ui/Card';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';
 import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -12,6 +13,7 @@ import { cn } from '../lib/utils';
 
 export const Stories: React.FC = () => {
   const { user, userProfile } = useAuth();
+  const { toast } = useToast();
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -57,10 +59,10 @@ export const Stories: React.FC = () => {
         image: imageUrl,
         timestamp: serverTimestamp()
       });
-
+      toast("Story added successfully", "success");
     } catch (error) {
       console.error("Error creating story:", error);
-      alert("Failed to upload story.");
+      toast("Failed to upload story. Please try again.", "error");
     } finally {
       setUploading(false);
       // Reset input
