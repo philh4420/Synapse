@@ -18,7 +18,6 @@ import {
   getDoc,
   updateDoc,
   increment,
-  getCountFromServer,
   orderBy
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
@@ -62,48 +61,16 @@ export const LandingPage: React.FC = () => {
       console.warn("Settings listener warning:", err.code);
     });
 
-    // 2. Stats Sync & Listener
-    // First, perform a self-healing fetch to ensure data is accurate (fixing the "0" issue)
-    const syncRealStats = async () => {
-      try {
-        const usersColl = collection(db, 'users');
-        
-        // Get true count
-        const snapshot = await getCountFromServer(usersColl);
-        const realCount = snapshot.data().count;
-        
-        // Get true recent avatars
-        const qAvatars = query(usersColl, orderBy('createdAt', 'desc'), limit(4));
-        const avatarSnap = await getDocs(qAvatars);
-        const realAvatars = avatarSnap.docs.map(d => d.data().photoURL).filter(Boolean);
-
-        // Update state immediately
-        setUserCount(realCount);
-        if (realAvatars.length > 0) {
-          setRecentAvatars(realAvatars);
-        }
-
-        // Repair/Init the public stats document if it's out of sync
-        const statsRef = doc(db, 'stats', 'public');
-        await setDoc(statsRef, {
-          userCount: realCount,
-          recentAvatars: realAvatars
-        }, { merge: true });
-
-      } catch (e) {
-        console.error("Failed to sync stats:", e);
-      }
-    };
-
-    syncRealStats();
-
-    // Then listen for real-time updates
+    // 2. Stats Listener (Public Document)
     const unsubStats = onSnapshot(doc(db, 'stats', 'public'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as any;
-        // Only update from listener if data looks valid
         if (typeof data.userCount === 'number') setUserCount(data.userCount);
         if (Array.isArray(data.recentAvatars)) setRecentAvatars(data.recentAvatars);
+      } else {
+        // Default state if stats doc hasn't been created yet
+        setUserCount(0);
+        setRecentAvatars([]);
       }
     });
 
@@ -215,7 +182,6 @@ export const LandingPage: React.FC = () => {
     const avatars = [...recentAvatars];
     // Fill with placeholders if less than 4 to maintain visual consistency
     while (avatars.length < 4) {
-      // Deterministic seeds for stable rendering
       avatars.push(`https://api.dicebear.com/9.x/avataaars/svg?seed=Synapse_Placeholder_${avatars.length}`);
     }
     return avatars.slice(0, 4);
