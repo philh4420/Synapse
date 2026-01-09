@@ -1,6 +1,4 @@
 
-
-
 export type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry';
 
 export interface UserSettings {
@@ -205,4 +203,25 @@ export interface FriendRequest {
   status: 'pending' | 'accepted' | 'rejected';
   timestamp: any;
   sender?: UserProfile; // Joined data
+}
+
+export interface Chat {
+  id: string;
+  participants: string[]; // Array of UIDs
+  participantData: Record<string, { displayName: string; photoURL: string }>; // Cached minimal profile data
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: any;
+    read: boolean;
+  };
+  updatedAt: any;
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  senderId: string;
+  timestamp: any;
+  image?: string;
 }
