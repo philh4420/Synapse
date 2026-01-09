@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, MoreHorizontal, Edit, Search, ArrowLeft, 
-  Smile, Image as ImageIcon, Phone, Video, Info, X, Minimize2, Bell, Ban, ThumbsUp, ChevronDown
+  Smile, Image as ImageIcon, Phone, Video, Info, X, Bell, Ban, ThumbsUp,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMessenger } from '../context/MessengerContext';
@@ -43,6 +44,7 @@ export const Messenger: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Ensure we have the index: participants (Arrays) + updatedAt (Desc)
     const q = query(
       collection(db, 'chats'),
       where('participants', 'array-contains', user.uid),
@@ -56,12 +58,28 @@ export const Messenger: React.FC = () => {
       })) as Chat[];
       setChats(fetchedChats);
       setLoadingChats(false);
+    }, (error) => {
+      console.error("Error fetching chats:", error);
+      setLoadingChats(false);
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  // 2. Fetch Messages for Active Chat (Separated from Chats update)
+  // 2. Deduplicate Chats for Display
+  // This handles cases where multiple chats might exist for the same pair due to previous bugs
+  const uniqueChats = useMemo(() => {
+    const seen = new Set();
+    return chats.filter(chat => {
+      const otherId = chat.participants.find(p => p !== user?.uid);
+      if (!otherId) return true; // Fallback
+      if (seen.has(otherId)) return false;
+      seen.add(otherId);
+      return true;
+    });
+  }, [chats, user]);
+
+  // 3. Fetch Messages for Active Chat
   useEffect(() => {
     if (!activeChatId) return;
 
@@ -85,11 +103,12 @@ export const Messenger: React.FC = () => {
     return () => unsubscribe();
   }, [activeChatId]);
 
-  // 3. Mark as Read Logic (Depends on chats to check lastMessage state)
+  // 4. Mark as Read Logic
   useEffect(() => {
     if (!activeChatId || !user) return;
 
     const activeChat = chats.find(c => c.id === activeChatId);
+    // Mark read if last message exists, is unread, AND sender is NOT me
     if (activeChat && activeChat.lastMessage && !activeChat.lastMessage.read && activeChat.lastMessage.senderId !== user.uid) {
        const chatDocRef = doc(db, 'chats', activeChatId);
        updateDoc(chatDocRef, {
@@ -98,15 +117,14 @@ export const Messenger: React.FC = () => {
     }
   }, [chats, activeChatId, user]);
 
-  // 4. Handle activeUserId from Context (Start/Open Chat)
-  // We use a ref to track if we've already handled the activeUserId to prevent loops
+  // 5. Handle activeUserId from Context
   const handledUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!activeUserId || handledUserIdRef.current === activeUserId || loadingChats) return;
 
     const handleOpen = async () => {
-        // Check if chat exists in currently loaded chats
+        // Check loaded chats first
         const existingChat = chats.find(c => c.participants.includes(activeUserId));
         
         if (existingChat) {
@@ -114,13 +132,11 @@ export const Messenger: React.FC = () => {
             setIsNewChat(false);
             handledUserIdRef.current = activeUserId;
         } else {
-            // Try to fetch or create
+            // Try to create/fetch
             try {
-                // First check DB if local chats list might be stale or incomplete (though onSnapshot should handle it)
-                // Assuming chats list is complete for user. If not found, create.
-                const userDoc = await import('firebase/firestore').then(mod => mod.getDoc(doc(db, 'users', activeUserId)));
-                if (userDoc.exists()) {
-                    const targetUser = userDoc.data() as UserProfile;
+                const userDoc = await getDocs(query(collection(db, 'users'), where(documentId(), '==', activeUserId)));
+                if (!userDoc.empty) {
+                    const targetUser = userDoc.docs[0].data() as UserProfile;
                     await startChat(targetUser);
                     handledUserIdRef.current = activeUserId;
                 }
@@ -136,13 +152,12 @@ export const Messenger: React.FC = () => {
       if (!isOpen) handledUserIdRef.current = null;
   }, [isOpen]);
 
-  // 5. Fetch Friends for New Chat
+  // 6. Fetch Friends for New Chat
   useEffect(() => {
     if (isNewChat && userProfile?.friends) {
       const fetchFriends = async () => {
         if (!userProfile.friends || userProfile.friends.length === 0) return;
         
-        // Filter out empty strings
         const friendIds = userProfile.friends.filter(Boolean).slice(0, 20); 
         if (friendIds.length === 0) return;
 
@@ -168,13 +183,34 @@ export const Messenger: React.FC = () => {
   const startChat = async (friend: UserProfile) => {
     if (!user || !userProfile) return;
 
-    // Check if chat already exists
-    const existingChat = chats.find(c => c.participants.includes(friend.uid));
+    // 1. Check local state (fastest)
+    let targetChat = chats.find(c => c.participants.includes(friend.uid));
+
+    // 2. If not found locally, double check Firestore to prevent duplicates
+    // This is critical when coming from a profile page click before Messenger loaded
+    if (!targetChat) {
+       try {
+         const q = query(
+           collection(db, 'chats'), 
+           where('participants', 'array-contains', user.uid)
+         );
+         const snapshot = await getDocs(q);
+         const foundDoc = snapshot.docs.find(doc => {
+            const data = doc.data();
+            return data.participants.includes(friend.uid);
+         });
+         
+         if (foundDoc) {
+            targetChat = { id: foundDoc.id, ...foundDoc.data() } as Chat;
+         }
+       } catch (e) { console.error("Error checking existing chats", e); }
+    }
     
-    if (existingChat) {
-      setActiveChatId(existingChat.id);
+    if (targetChat) {
+      setActiveChatId(targetChat.id);
       setIsNewChat(false);
     } else {
+      // Create new chat
       try {
         const participantData = {
           [user.uid]: { displayName: userProfile.displayName || 'User', photoURL: userProfile.photoURL || '' },
@@ -269,7 +305,6 @@ export const Messenger: React.FC = () => {
   const activeChatData = chats.find(c => c.id === activeChatId);
   const activeChatPartner = activeChatData ? getOtherParticipant(activeChatData) : null;
 
-  // Don't render anything if closed (but keeping hooks valid)
   if (!isOpen) return null;
 
   return (
@@ -331,10 +366,11 @@ export const Messenger: React.FC = () => {
                  </div>
               </div>
            ) : (
-              chats.map(chat => {
+              uniqueChats.map(chat => {
                  const other = getOtherParticipant(chat);
                  const isActive = activeChatId === chat.id;
                  const isUnread = !chat.lastMessage?.read && chat.lastMessage?.senderId !== user?.uid;
+                 const isSenderMe = chat.lastMessage?.senderId === user?.uid;
                  
                  return (
                     <button 
@@ -352,14 +388,13 @@ export const Messenger: React.FC = () => {
                              <AvatarImage src={other.photoURL} />
                              <AvatarFallback>{other.displayName[0]}</AvatarFallback>
                           </Avatar>
-                          {/* We don't have real online status yet, so simulating if recently active */}
                           <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
                        </div>
                        <div className="flex-1 min-w-0 pr-4">
                           <p className={cn("text-[15px] truncate", isUnread ? "font-bold text-slate-900" : "text-slate-900 dark:text-slate-100 font-medium")}>{other.displayName}</p>
                           <div className={cn("flex items-center gap-1 text-[13px]", isUnread ? "font-bold text-slate-900" : "text-slate-500 dark:text-slate-400")}>
                              <span className="truncate max-w-[140px]">
-                                {chat.lastMessage?.senderId === user?.uid ? 'You: ' : ''}{chat.lastMessage?.text || 'Sent an image'}
+                                {isSenderMe ? 'You: ' : ''}{chat.lastMessage?.text || 'Sent an image'}
                              </span>
                              <span>·</span>
                              <span>
@@ -457,7 +492,6 @@ export const Messenger: React.FC = () => {
                      const isFirstInSequence = !prevMsg || prevMsg.senderId !== msg.senderId;
                      const isLastInSequence = !nextMsg || nextMsg.senderId !== msg.senderId;
                      
-                     // Show timestamp if first msg or time difference > 20 mins
                      const showTime = isFirstInSequence && msg.timestamp && (!prevMsg?.timestamp || (msg.timestamp.toMillis() - prevMsg.timestamp.toMillis() > 20 * 60 * 1000));
 
                      return (
@@ -491,7 +525,6 @@ export const Messenger: React.FC = () => {
                                           ? "bg-synapse-600 text-white" 
                                           : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100",
                                        
-                                       // Corner Rounding Logic
                                        isFirstInSequence && isLastInSequence ? "rounded-2xl" :
                                        isFirstInSequence && !isLastInSequence ? (isMe ? "rounded-2xl rounded-br-md" : "rounded-2xl rounded-bl-md") :
                                        !isFirstInSequence && isLastInSequence ? (isMe ? "rounded-2xl rounded-tr-md" : "rounded-2xl rounded-tl-md") :
@@ -508,7 +541,6 @@ export const Messenger: React.FC = () => {
                      );
                   })}
                   
-                  {/* Read Receipt (Mock) */}
                   {messages.length > 0 && messages[messages.length - 1].senderId === user?.uid && (
                      <div className="flex justify-end mt-1 mr-1">
                         <Avatar className="h-3.5 w-3.5 border border-white shadow-sm">
@@ -612,7 +644,6 @@ export const Messenger: React.FC = () => {
                </AccordionItem>
                <AccordionItem title="Media, Files and Links">
                   <div className="grid grid-cols-3 gap-1">
-                     {/* Mock Media */}
                      {[1,2,3].map(i => (
                         <div key={i} className="bg-slate-100 aspect-square rounded-lg"></div>
                      ))}
@@ -635,7 +666,6 @@ export const Messenger: React.FC = () => {
   );
 };
 
-// Helper Components
 const UserProfileIcon = (props: any) => (
    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
 );
