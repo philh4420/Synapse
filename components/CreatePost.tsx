@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Image, Video, Smile, X, Loader2, Globe, MapPin, UserPlus, ChevronDown, 
-  Search, ArrowLeft, Gift, Navigation, Users, Lock, MoreHorizontal, MousePointerClick
+  Search, ArrowLeft, Gift, Navigation, Users, Lock, MoreHorizontal, 
+  Camera, Mic, BarChart2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -34,15 +35,15 @@ import { db, GIPHY_API_KEY } from '../firebaseConfig';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
 
-// Background Gradients
+// Modern Background Gradients
 const BACKGROUNDS = [
   'bg-white',
-  'bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white font-bold text-2xl text-center',
-  'bg-gradient-to-r from-blue-400 to-emerald-400 text-white font-bold text-2xl text-center',
-  'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold text-2xl text-center',
-  'bg-gradient-to-r from-slate-900 to-slate-700 text-white font-bold text-2xl text-center',
-  'bg-[url(https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80)] bg-cover text-white font-bold text-2xl text-center',
-  'bg-[url(https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=80)] bg-cover text-white font-bold text-2xl text-center',
+  'bg-gradient-to-br from-rose-400 via-fuchsia-500 to-indigo-500 text-white font-bold text-2xl text-center shadow-inner',
+  'bg-gradient-to-tr from-emerald-400 to-cyan-500 text-white font-bold text-2xl text-center shadow-inner',
+  'bg-gradient-to-bl from-violet-600 to-indigo-600 text-white font-bold text-2xl text-center shadow-inner',
+  'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white font-bold text-2xl text-center shadow-inner',
+  'bg-[url(https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80)] bg-cover text-white font-bold text-2xl text-center shadow-inner',
+  'bg-[url(https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=800&q=80)] bg-cover text-white font-bold text-2xl text-center shadow-inner',
 ];
 
 const FEELINGS = [
@@ -342,411 +343,426 @@ export const CreatePost: React.FC = () => {
   };
 
   return (
-    <Card className="px-4 pt-3 pb-2 shadow-sm border-slate-200 bg-white rounded-xl">
-      <div className="flex gap-3 mb-3">
-        <Avatar className="h-10 w-10 cursor-pointer hover:brightness-95 transition-all">
-          <AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} />
-          <AvatarFallback>{firstName[0]}</AvatarFallback>
-        </Avatar>
-        
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <div className="flex-1 bg-[#F0F2F5] hover:bg-[#E4E6E9] rounded-full px-4 py-2.5 cursor-pointer transition-colors text-slate-500 hover:text-slate-600 text-[15px] select-none flex items-center truncate">
-              What's on your mind, {firstName}?
-            </div>
-          </DialogTrigger>
+    <Card className="overflow-hidden border border-slate-200/60 shadow-sm bg-white rounded-2xl group transition-shadow hover:shadow-md">
+      <div className="p-4">
+        <div className="flex gap-3 items-center">
+          <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-white shadow-sm transition-transform active:scale-95">
+            <AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} />
+            <AvatarFallback>{firstName[0]}</AvatarFallback>
+          </Avatar>
           
-          <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden rounded-xl h-[80vh] sm:h-auto sm:max-h-[85vh] flex flex-col">
-            <DialogHeader className="p-4 border-b border-slate-200 relative flex items-center justify-center shrink-0">
-              {subModal !== 'none' && (
-                <button 
-                  onClick={() => setSubModal('none')} 
-                  className="absolute left-4 top-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5 text-slate-600" />
-                </button>
-              )}
-              <DialogTitle className="text-center text-[20px] font-bold text-slate-900">
-                {subModal === 'none' ? 'Create Post' : 
-                 subModal === 'feeling' ? 'How are you feeling?' :
-                 subModal === 'location' ? 'Search for location' :
-                 subModal === 'tag' ? 'Tag friends' : 'Choose a GIF'}
-              </DialogTitle>
-              <DialogDescription className="sr-only">Create post dialog</DialogDescription>
-            </DialogHeader>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <div className="flex-1 bg-slate-100/70 hover:bg-slate-200/70 transition-all cursor-pointer rounded-full px-5 py-2.5 flex items-center text-slate-500 font-medium text-[15px] select-none shadow-inner">
+                What's on your mind, {firstName}?
+              </div>
+            </DialogTrigger>
             
-            {/* --- Main Create Post View --- */}
-            {subModal === 'none' && (
-              <div 
-                className="flex-1 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 relative"
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                {/* Drag Overlay */}
-                {isDragging && (
-                   <div className="absolute inset-0 bg-synapse-50/90 z-50 flex items-center justify-center border-4 border-dashed border-synapse-300 m-2 rounded-xl">
-                      <div className="text-synapse-600 font-bold text-xl flex flex-col items-center">
-                         <Image className="w-12 h-12 mb-2" />
-                         Drop photos or videos here
-                      </div>
-                   </div>
+            <DialogContent className="sm:max-w-[550px] p-0 gap-0 overflow-hidden rounded-2xl h-[85vh] sm:h-auto sm:max-h-[85vh] flex flex-col bg-white border-none shadow-2xl">
+              <DialogHeader className="p-4 border-b border-slate-100 relative flex items-center justify-center shrink-0 bg-white/80 backdrop-blur-md z-20">
+                {subModal !== 'none' && (
+                  <button 
+                    onClick={() => setSubModal('none')} 
+                    className="absolute left-4 top-4 p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-700"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
                 )}
-
-                <div className="p-4">
-                  {/* User Info */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} />
-                      <AvatarFallback>{firstName[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-semibold text-[15px] text-slate-900 leading-tight">
-                        {userProfile?.displayName}
-                        {feeling && <span className="font-normal text-slate-600"> is {feeling.emoji} feeling {feeling.label}</span>}
-                        {location && <span className="font-normal text-slate-600"> at <span className="text-red-500 font-medium">{location}</span></span>}
-                        {taggedUsers.length > 0 && <span className="font-normal text-slate-600"> with <span className="text-blue-600 font-medium">{taggedUsers.length} others</span></span>}
-                      </div>
-                      
-                      {/* Privacy Dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="flex items-center gap-1 bg-slate-200/60 hover:bg-slate-200 rounded-md px-2 py-0.5 text-xs font-bold text-slate-600 w-fit mt-1 cursor-pointer select-none transition-colors">
-                            {getPrivacyIcon(privacy)}
-                            <span>{getPrivacyLabel(privacy)}</span>
-                            <ChevronDown className="w-3 h-3" />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[280px] p-2 rounded-xl">
-                          <div className="px-2 py-2 text-[17px] font-bold text-slate-900">Post Audience</div>
-                          <Separator className="mb-2" />
-                          <DropdownMenuItem onClick={() => setPrivacy('public')} className="gap-3 p-2.5 rounded-lg cursor-pointer">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Globe className="w-6 h-6 text-slate-700" /></div>
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-slate-900 text-base">Public</span>
-                              <span className="text-xs text-slate-500">Anyone on or off Synapse</span>
-                            </div>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPrivacy('friends')} className="gap-3 p-2.5 rounded-lg cursor-pointer">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Users className="w-6 h-6 text-slate-700" /></div>
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-slate-900 text-base">Friends</span>
-                              <span className="text-xs text-slate-500">Your friends on Synapse</span>
-                            </div>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPrivacy('only_me')} className="gap-3 p-2.5 rounded-lg cursor-pointer">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Lock className="w-6 h-6 text-slate-700" /></div>
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-slate-900 text-base">Only me</span>
-                              <span className="text-xs text-slate-500">Only you can see this post</span>
-                            </div>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                    </div>
-                  </div>
-
-                  {/* Input with Background Logic */}
-                  <div className={`relative transition-all ${background ? 'aspect-video flex items-center justify-center rounded-xl overflow-hidden mb-4' : 'min-h-[150px]'}`}>
-                    {background && <div className={`absolute inset-0 ${background} -z-10`} />}
-                    
-                    <textarea
-                      ref={textAreaRef}
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder={`What's on your mind, ${firstName}?`}
-                      className={cn(
-                        "w-full resize-none outline-none border-none focus:ring-0 p-1 bg-transparent placeholder:text-slate-500",
-                        background 
-                           ? "text-center text-white placeholder:text-white/70 h-full flex items-center justify-center align-middle pt-[15%] text-[24px] font-bold px-8 leading-tight" 
-                           : "text-[20px] text-slate-900 min-h-[140px]"
-                      )}
-                      autoFocus
-                    />
-                    
-                    {/* Emoji Picker Button (Only if no background for simplicity in layout) */}
-                    {!background && (
-                      <div className="absolute bottom-2 right-2">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors">
-                               <Smile className="w-6 h-6" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-64 p-2">
-                             <div className="grid grid-cols-6 gap-1 max-h-[200px] overflow-y-auto">
-                               {EMOJIS.map(e => (
-                                 <button key={e} onClick={() => insertEmoji(e)} className="text-xl p-1 hover:bg-slate-100 rounded">{e}</button>
-                               ))}
-                             </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Background Toggle (Only if no media) */}
-                  {previewUrls.length === 0 && !videoFile && !gif && !background && (
-                    <div className="flex items-center justify-between mb-4 animate-in fade-in slide-in-from-left-2">
-                       <button onClick={() => setShowBackgrounds(!showBackgrounds)} className="h-9 w-9 rounded-lg overflow-hidden">
-                         <img src="https://www.facebook.com/images/composer/SATP_Aa_square-2x.png" className="w-full h-full" alt="Backgrounds" />
-                       </button>
-                    </div>
-                  )}
-                  
-                  {/* Background Picker */}
-                  {showBackgrounds && previewUrls.length === 0 && !videoFile && !gif && (
-                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
-                      <button onClick={() => setBackground('')} className="w-8 h-8 flex-shrink-0 rounded-lg bg-slate-100 border border-slate-300 flex items-center justify-center transition-transform hover:scale-110"><div className="w-2 h-2 bg-slate-400 rounded-full" /></button>
-                      {BACKGROUNDS.slice(1).map((bg, i) => (
-                        <button key={i} onClick={() => setBackground(bg)} className={`w-8 h-8 flex-shrink-0 rounded-lg ${bg.split(' ')[0]} ${bg.includes('url') ? 'bg-cover' : ''} border border-slate-100 shadow-sm transition-transform hover:scale-110`} />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Media Previews */}
-                  {(previewUrls.length > 0 || videoPreview || gif) && (
-                     <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 mb-4 group">
-                        <div className="absolute top-2 right-2 z-10">
-                           <button onClick={() => removeMedia()} className="bg-white p-1.5 rounded-full shadow-md hover:bg-slate-100 text-slate-600 transition-colors">
-                             <X className="w-5 h-5" />
-                           </button>
+                <DialogTitle className="text-center text-[18px] font-bold text-slate-800 tracking-tight">
+                  {subModal === 'none' ? 'Create Post' : 
+                   subModal === 'feeling' ? 'How are you feeling?' :
+                   subModal === 'location' ? 'Search for location' :
+                   subModal === 'tag' ? 'Tag friends' : 'Choose a GIF'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">Create post dialog</DialogDescription>
+              </DialogHeader>
+              
+              {/* --- Main Create Post View --- */}
+              {subModal === 'none' && (
+                <div 
+                  className="flex-1 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 relative"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  {/* Drag Overlay */}
+                  {isDragging && (
+                     <div className="absolute inset-0 bg-synapse-50/90 backdrop-blur-sm z-50 flex items-center justify-center m-2 rounded-xl border-2 border-dashed border-synapse-300 animate-in fade-in duration-200">
+                        <div className="text-synapse-600 font-bold text-xl flex flex-col items-center">
+                           <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg mb-3">
+                              <Image className="w-8 h-8" />
+                           </div>
+                           Drop photos or videos here
                         </div>
-                        
-                        {/* Images Grid */}
-                        {previewUrls.length > 0 && (
-                           <div className={`grid gap-0.5 ${previewUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                              {previewUrls.map((url, i) => (
-                                 <div key={i} className="relative group/img">
-                                    <img src={url} className="w-full h-auto max-h-[300px] object-cover" />
-                                    {previewUrls.length > 1 && (
-                                       <button onClick={() => removeMedia(i)} className="absolute top-1 left-1 bg-white/80 p-1 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity">
-                                          <X className="w-3 h-3" />
-                                       </button>
-                                    )}
-                                 </div>
-                              ))}
-                           </div>
-                        )}
-                        
-                        {/* Video Preview */}
-                        {videoPreview && (
-                           <div className="relative bg-black flex justify-center items-center">
-                              <video src={videoPreview} controls className="max-h-[300px] w-full" />
-                           </div>
-                        )}
-                        
-                        {/* GIF Preview */}
-                        {gif && (
-                           <div className="relative">
-                              <img src={gif} className="w-full" />
-                              <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded font-bold">GIF</div>
-                           </div>
-                        )}
-                        
-                        {/* Add More Button (Images Only) */}
-                        {previewUrls.length > 0 && !videoFile && (
-                           <div className="absolute top-2 left-2">
-                             <Button size="sm" variant="secondary" className="h-8 bg-white/90 hover:bg-white text-slate-700 shadow-sm" onClick={() => fileInputRef.current?.click()}>
-                                <Image className="w-4 h-4 mr-1.5" /> Add Photos
-                             </Button>
-                           </div>
-                        )}
                      </div>
                   )}
 
-                  {/* Add to Post Actions Box */}
-                  <div className="border border-slate-300 rounded-lg p-3 flex items-center justify-between shadow-sm mt-4">
-                    <span className="font-semibold text-[15px] text-slate-900 pl-1 cursor-default select-none">Add to your post</span>
-                    <div className="flex gap-1">
-                        <TooltipBtn 
-                           onClick={() => fileInputRef.current?.click()} 
-                           icon={Image} color="text-[#45BD62]" 
-                           tooltip="Photo/Video"
-                        />
-                        <TooltipBtn 
-                           onClick={() => setSubModal('tag')} 
-                           icon={UserPlus} color="text-[#1877F2]" 
-                           tooltip="Tag People"
-                        />
-                        <TooltipBtn 
-                           onClick={() => setSubModal('feeling')} 
-                           icon={Smile} color="text-[#F7B928]" 
-                           tooltip="Feeling/Activity"
-                        />
-                        <TooltipBtn 
-                           onClick={() => setSubModal('location')} 
-                           icon={MapPin} color="text-[#F5533D]" 
-                           tooltip="Check in"
-                        />
-                        <TooltipBtn 
-                           onClick={() => { setSubModal('gif'); handleGifSearch(''); }} 
-                           icon={Gift} color="text-[#2ABBA7]" 
-                           tooltip="GIF"
-                        />
-                        <TooltipBtn 
-                           onClick={() => {}} 
-                           icon={MoreHorizontal} color="text-slate-500" 
-                           tooltip="More"
-                        />
+                  <div className="p-4 flex-1 flex flex-col">
+                    {/* User Info */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar className="h-11 w-11 ring-2 ring-white shadow-sm">
+                        <AvatarImage src={userProfile?.photoURL || user?.photoURL || ''} />
+                        <AvatarFallback>{firstName[0]}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-bold text-[15px] text-slate-900 leading-tight">
+                          {userProfile?.displayName}
+                          {feeling && <span className="font-normal text-slate-600"> is {feeling.emoji} feeling {feeling.label}</span>}
+                          {location && <span className="font-normal text-slate-600"> at <span className="text-red-500 font-medium">{location}</span></span>}
+                          {taggedUsers.length > 0 && <span className="font-normal text-slate-600"> with <span className="text-blue-600 font-medium">{taggedUsers.length} others</span></span>}
+                        </div>
+                        
+                        {/* Privacy Dropdown */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 rounded-md px-2 py-1 text-xs font-bold text-slate-600 w-fit mt-1 cursor-pointer select-none transition-all border border-transparent hover:border-slate-300">
+                              {getPrivacyIcon(privacy)}
+                              <span>{getPrivacyLabel(privacy)}</span>
+                              <ChevronDown className="w-3 h-3 opacity-70" />
+                            </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-[300px] p-2 rounded-2xl shadow-xl border-slate-100">
+                            <div className="px-3 py-2 text-[17px] font-bold text-slate-900">Post Audience</div>
+                            <Separator className="mb-2 bg-slate-100" />
+                            <DropdownMenuItem onClick={() => setPrivacy('public')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Globe className="w-5 h-5 text-slate-700" /></div>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-slate-900 text-base">Public</span>
+                                <span className="text-xs text-slate-500">Anyone on or off Synapse</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPrivacy('friends')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Users className="w-5 h-5 text-slate-700" /></div>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-slate-900 text-base">Friends</span>
+                                <span className="text-xs text-slate-500">Your friends on Synapse</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPrivacy('only_me')} className="gap-3 p-3 rounded-xl cursor-pointer focus:bg-slate-50">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Lock className="w-5 h-5 text-slate-700" /></div>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-slate-900 text-base">Only me</span>
+                                <span className="text-xs text-slate-500">Only you can see this post</span>
+                              </div>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                      </div>
+                    </div>
+
+                    {/* Input with Background Logic */}
+                    <div className={`relative transition-all ${background ? 'aspect-video flex items-center justify-center rounded-2xl overflow-hidden mb-4 shadow-inner ring-1 ring-black/5' : 'min-h-[160px]'}`}>
+                      {background && <div className={`absolute inset-0 ${background} -z-10`} />}
+                      
+                      <textarea
+                        ref={textAreaRef}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder={`What's on your mind, ${firstName}?`}
+                        className={cn(
+                          "w-full resize-none outline-none border-none focus:ring-0 p-1 bg-transparent placeholder:text-slate-400 font-normal leading-relaxed",
+                          background 
+                             ? "text-center text-white placeholder:text-white/70 h-full flex items-center justify-center align-middle pt-[15%] text-[28px] font-bold px-8" 
+                             : "text-[20px] text-slate-900 h-full"
+                        )}
+                        autoFocus
+                      />
+                      
+                      {/* Emoji Picker Button (Only if no background for simplicity in layout) */}
+                      {!background && (
+                        <div className="absolute bottom-2 right-2 flex gap-2">
+                           {/* Only show if focused or content exists? No, always accessible */}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="text-slate-400 hover:text-amber-500 p-2 rounded-full hover:bg-slate-50 transition-all active:scale-90">
+                                 <Smile className="w-6 h-6" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-72 p-3 rounded-2xl shadow-xl border-slate-100">
+                               <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Recent</div>
+                               <div className="grid grid-cols-6 gap-1 max-h-[200px] overflow-y-auto">
+                                 {EMOJIS.map(e => (
+                                   <button key={e} onClick={() => insertEmoji(e)} className="text-2xl p-1.5 hover:bg-slate-100 rounded-lg transition-colors">{e}</button>
+                                 ))}
+                               </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Background Toggle (Only if no media) */}
+                    {previewUrls.length === 0 && !videoFile && !gif && !background && (
+                      <div className="flex items-center justify-between mb-4 animate-in fade-in slide-in-from-left-2 pl-1">
+                         <button onClick={() => setShowBackgrounds(!showBackgrounds)} className="h-8 w-8 rounded-lg overflow-hidden ring-1 ring-slate-200 shadow-sm transition-transform hover:scale-105">
+                           <img src="https://www.facebook.com/images/composer/SATP_Aa_square-2x.png" className="w-full h-full" alt="Backgrounds" />
+                         </button>
+                      </div>
+                    )}
+                    
+                    {/* Background Picker */}
+                    {showBackgrounds && previewUrls.length === 0 && !videoFile && !gif && (
+                      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin px-1">
+                        <button onClick={() => setBackground('')} className="w-8 h-8 flex-shrink-0 rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center transition-transform hover:scale-110"><div className="w-2 h-2 bg-slate-400 rounded-full" /></button>
+                        {BACKGROUNDS.slice(1).map((bg, i) => (
+                          <button key={i} onClick={() => setBackground(bg)} className={`w-8 h-8 flex-shrink-0 rounded-lg ${bg.split(' ')[0]} ${bg.includes('url') ? 'bg-cover' : ''} border border-white/20 shadow-sm transition-transform hover:scale-110`} />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Media Previews */}
+                    {(previewUrls.length > 0 || videoPreview || gif) && (
+                       <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 mb-4 group shadow-inner">
+                          <div className="absolute top-2 right-2 z-10">
+                             <button onClick={() => removeMedia()} className="bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-md hover:bg-white text-slate-600 transition-colors">
+                               <X className="w-5 h-5" />
+                             </button>
+                          </div>
+                          
+                          {/* Images Grid */}
+                          {previewUrls.length > 0 && (
+                             <div className={`grid gap-0.5 ${previewUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                                {previewUrls.map((url, i) => (
+                                   <div key={i} className="relative group/img aspect-auto">
+                                      <img src={url} className="w-full h-full max-h-[300px] object-cover" />
+                                      {previewUrls.length > 1 && (
+                                         <button onClick={() => removeMedia(i)} className="absolute top-1 left-1 bg-white/80 p-1 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                            <X className="w-3 h-3" />
+                                         </button>
+                                      )}
+                                   </div>
+                                ))}
+                             </div>
+                          )}
+                          
+                          {/* Video Preview */}
+                          {videoPreview && (
+                             <div className="relative bg-black flex justify-center items-center">
+                                <video src={videoPreview} controls className="max-h-[300px] w-full" />
+                             </div>
+                          )}
+                          
+                          {/* GIF Preview */}
+                          {gif && (
+                             <div className="relative">
+                                <img src={gif} className="w-full" />
+                                <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">GIF</div>
+                             </div>
+                          )}
+                          
+                          {/* Add More Button (Images Only) */}
+                          {previewUrls.length > 0 && !videoFile && (
+                             <div className="absolute top-2 left-2">
+                               <Button size="sm" variant="secondary" className="h-8 bg-white/90 backdrop-blur-md hover:bg-white text-slate-700 shadow-sm font-semibold text-xs rounded-full border border-white/50" onClick={() => fileInputRef.current?.click()}>
+                                  <Image className="w-3.5 h-3.5 mr-1.5" /> Add Photos
+                               </Button>
+                             </div>
+                          )}
+                       </div>
+                    )}
+
+                    {/* Add to Post Actions Box */}
+                    <div className="mt-auto">
+                        <div className="border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm bg-white">
+                            <span className="font-semibold text-[15px] text-slate-900 pl-1 cursor-default select-none">Add to your post</span>
+                            <div className="flex gap-1">
+                                <TooltipBtn 
+                                onClick={() => fileInputRef.current?.click()} 
+                                icon={Image} color="text-emerald-500" 
+                                bgHover="hover:bg-emerald-50"
+                                tooltip="Photo/Video"
+                                />
+                                <TooltipBtn 
+                                onClick={() => setSubModal('tag')} 
+                                icon={UserPlus} color="text-blue-500" 
+                                bgHover="hover:bg-blue-50"
+                                tooltip="Tag People"
+                                />
+                                <TooltipBtn 
+                                onClick={() => setSubModal('feeling')} 
+                                icon={Smile} color="text-amber-500" 
+                                bgHover="hover:bg-amber-50"
+                                tooltip="Feeling/Activity"
+                                />
+                                <TooltipBtn 
+                                onClick={() => setSubModal('location')} 
+                                icon={MapPin} color="text-rose-500" 
+                                bgHover="hover:bg-rose-50"
+                                tooltip="Check in"
+                                />
+                                <TooltipBtn 
+                                onClick={() => { setSubModal('gif'); handleGifSearch(''); }} 
+                                icon={Gift} color="text-teal-500" 
+                                bgHover="hover:bg-teal-50"
+                                tooltip="GIF"
+                                />
+                                <TooltipBtn 
+                                onClick={() => {}} 
+                                icon={MoreHorizontal} color="text-slate-400" 
+                                bgHover="hover:bg-slate-100"
+                                tooltip="More"
+                                />
+                            </div>
+                        </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-4 border-t border-slate-200 mt-auto bg-white sticky bottom-0 z-20">
-                   <Button 
-                      onClick={handleSubmit} 
-                      disabled={(!content.trim() && selectedFiles.length === 0 && !videoFile && !gif) || isUploading}
-                      className="w-full bg-synapse-600 hover:bg-synapse-700 text-white font-semibold h-10 rounded-lg text-[15px] disabled:bg-slate-200 disabled:text-slate-400 transition-all"
-                    >
-                      {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Posting...</> : "Post"}
-                   </Button>
-                </div>
-              </div>
-            )}
-
-            {/* --- Sub Modals --- */}
-            
-            {/* Feelings */}
-            {subModal === 'feeling' && (
-              <div className="flex-1 p-2 grid grid-cols-2 gap-1 overflow-y-auto content-start">
-                {FEELINGS.map(f => (
-                   <button 
-                    key={f.label}
-                    onClick={() => { setFeeling(f); setSubModal('none'); }}
-                    className="flex items-center gap-3 p-2 hover:bg-slate-100 rounded-lg transition-colors text-left"
-                   >
-                     <div className="text-2xl bg-slate-100 rounded-full w-9 h-9 flex items-center justify-center border border-slate-200">{f.emoji}</div>
-                     <span className="font-medium text-slate-700 capitalize text-[15px]">{f.label}</span>
-                   </button>
-                ))}
-              </div>
-            )}
-
-            {/* Location */}
-            {subModal === 'location' && (
-              <div className="flex-1 p-4 flex flex-col">
-                <div className="relative mb-4">
-                   <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-                   <input 
-                      value={locationSearch}
-                      onChange={(e) => setLocationSearch(e.target.value)}
-                      placeholder="Where are you?" 
-                      className="w-full bg-slate-100 rounded-full pl-9 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-synapse-500"
-                      autoFocus
-                    />
-                </div>
-                
-                <div className="space-y-1 overflow-y-auto">
-                   {!locationSearch && (
-                      <button 
-                        onClick={getCurrentLocation}
-                        className="w-full flex items-center gap-3 p-3 hover:bg-slate-100 rounded-lg text-left text-synapse-600"
+                  <div className="p-4 border-t border-slate-100 bg-white sticky bottom-0 z-20">
+                     <Button 
+                        onClick={handleSubmit} 
+                        disabled={(!content.trim() && selectedFiles.length === 0 && !videoFile && !gif) || isUploading}
+                        className="w-full bg-synapse-600 hover:bg-synapse-700 text-white font-bold h-11 rounded-xl text-[16px] disabled:bg-slate-200 disabled:text-slate-400 transition-all shadow-md hover:shadow-lg disabled:shadow-none"
                       >
-                         <div className="w-9 h-9 bg-synapse-50 rounded-full flex items-center justify-center">
-                            {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5 fill-current" />}
-                         </div>
-                         <span className="font-medium">Use current location</span>
-                      </button>
-                   )}
-
-                   {locationResults.map((place: any, i) => {
-                      const parts = place.display_name.split(', ');
-                      return (
-                        <button 
-                          key={i}
-                          onClick={() => { setLocation(parts[0]); setSubModal('none'); }}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-slate-100 rounded-lg text-left group transition-colors"
-                        >
-                          <div className="w-9 h-9 bg-slate-200 group-hover:bg-slate-300 rounded-full flex items-center justify-center flex-shrink-0 transition-colors">
-                              <MapPin className="w-5 h-5 text-slate-600" />
-                          </div>
-                          <div className="min-w-0">
-                              <div className="font-medium text-slate-900 truncate">{parts[0]}</div>
-                              <div className="text-xs text-slate-500 truncate">{parts.slice(1, 3).join(', ')}</div>
-                          </div>
-                        </button>
-                      );
-                   })}
+                        {isUploading ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Publishing...</> : "Post"}
+                     </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Tag People */}
-            {subModal === 'tag' && (
-               <div className="flex-1 p-4 flex flex-col">
+              {/* --- Sub Modals --- */}
+              
+              {/* Feelings */}
+              {subModal === 'feeling' && (
+                <div className="flex-1 p-2 grid grid-cols-2 gap-1 overflow-y-auto content-start bg-slate-50/50">
+                  {FEELINGS.map(f => (
+                     <button 
+                      key={f.label}
+                      onClick={() => { setFeeling(f); setSubModal('none'); }}
+                      className="flex items-center gap-3 p-2.5 hover:bg-white hover:shadow-sm rounded-xl transition-all text-left border border-transparent hover:border-slate-100"
+                     >
+                       <div className="text-2xl bg-white shadow-sm rounded-full w-10 h-10 flex items-center justify-center border border-slate-100">{f.emoji}</div>
+                       <span className="font-medium text-slate-700 capitalize text-[15px]">{f.label}</span>
+                     </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Location */}
+              {subModal === 'location' && (
+                <div className="flex-1 p-4 flex flex-col">
                   <div className="relative mb-4">
-                     <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
+                     <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
                      <input 
-                        value={userSearch}
-                        onChange={(e) => handleUserSearch(e.target.value)}
-                        placeholder="Search for friends" 
-                        className="w-full bg-slate-100 rounded-full pl-9 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-synapse-500"
+                        value={locationSearch}
+                        onChange={(e) => setLocationSearch(e.target.value)}
+                        placeholder="Where are you?" 
+                        className="w-full bg-slate-100 rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:bg-white transition-all text-[15px]"
                         autoFocus
                       />
                   </div>
+                  
                   <div className="space-y-1 overflow-y-auto">
-                     <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Suggestions</div>
-                     {userResults.map(u => (
+                     {!locationSearch && (
                         <button 
-                          key={u.uid}
-                          onClick={() => { 
-                             if (!taggedUsers.find(t => t.uid === u.uid)) setTaggedUsers([...taggedUsers, u]);
-                             setSubModal('none'); 
-                          }}
-                          className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded-lg text-left transition-colors"
+                          onClick={getCurrentLocation}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl text-left text-synapse-600 transition-colors group"
                         >
-                           <Avatar><AvatarImage src={u.photoURL || ''} /><AvatarFallback>{u.displayName?.[0]}</AvatarFallback></Avatar>
-                           <span className="font-medium text-slate-900">{u.displayName}</span>
+                           <div className="w-10 h-10 bg-synapse-50 group-hover:bg-synapse-100 rounded-full flex items-center justify-center transition-colors">
+                              {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5 fill-current" />}
+                           </div>
+                           <span className="font-medium">Use current location</span>
                         </button>
-                     ))}
+                     )}
+
+                     {locationResults.map((place: any, i) => {
+                        const parts = place.display_name.split(', ');
+                        return (
+                          <button 
+                            key={i}
+                            onClick={() => { setLocation(parts[0]); setSubModal('none'); }}
+                            className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl text-left group transition-colors"
+                          >
+                            <div className="w-10 h-10 bg-slate-100 group-hover:bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0 transition-colors border border-slate-200">
+                                <MapPin className="w-5 h-5 text-slate-500" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="font-semibold text-slate-900 truncate text-[15px]">{parts[0]}</div>
+                                <div className="text-xs text-slate-500 truncate">{parts.slice(1, 3).join(', ')}</div>
+                            </div>
+                          </button>
+                        );
+                     })}
                   </div>
-               </div>
-            )}
+                </div>
+              )}
 
-            {/* GIFs */}
-            {subModal === 'gif' && (
-              <div className="flex-1 p-4 flex flex-col h-full">
-                  <div className="relative mb-4">
-                     <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-                     <input 
-                        value={gifSearch}
-                        onChange={(e) => handleGifSearch(e.target.value)}
-                        placeholder="Search GIFs" 
-                        className="w-full bg-slate-100 rounded-full pl-9 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-synapse-500"
-                        autoFocus
-                      />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 overflow-y-auto flex-1 content-start">
-                     {gifs.map((g: any) => (
-                        <div key={g.id} onClick={() => selectGif(g.images.fixed_height.url)} className="cursor-pointer rounded-lg overflow-hidden bg-slate-100 h-32 relative group hover:opacity-90 transition-opacity">
-                           <img src={g.images.fixed_height_small.url} className="w-full h-full object-cover" />
-                        </div>
-                     ))}
-                  </div>
-              </div>
-            )}
+              {/* Tag People */}
+              {subModal === 'tag' && (
+                 <div className="flex-1 p-4 flex flex-col">
+                    <div className="relative mb-4">
+                       <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
+                       <input 
+                          value={userSearch}
+                          onChange={(e) => handleUserSearch(e.target.value)}
+                          placeholder="Search for friends" 
+                          className="w-full bg-slate-100 rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:bg-white transition-all text-[15px]"
+                          autoFocus
+                        />
+                    </div>
+                    <div className="space-y-1 overflow-y-auto">
+                       <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider px-2">Suggestions</div>
+                       {userResults.map(u => (
+                          <button 
+                            key={u.uid}
+                            onClick={() => { 
+                               if (!taggedUsers.find(t => t.uid === u.uid)) setTaggedUsers([...taggedUsers, u]);
+                               setSubModal('none'); 
+                            }}
+                            className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl text-left transition-colors"
+                          >
+                             <Avatar className="h-10 w-10 border border-slate-100"><AvatarImage src={u.photoURL || ''} /><AvatarFallback>{u.displayName?.[0]}</AvatarFallback></Avatar>
+                             <span className="font-semibold text-slate-900">{u.displayName}</span>
+                          </button>
+                       ))}
+                    </div>
+                 </div>
+              )}
 
-          </DialogContent>
-        </Dialog>
-      </div>
+              {/* GIFs */}
+              {subModal === 'gif' && (
+                <div className="flex-1 p-4 flex flex-col h-full">
+                    <div className="relative mb-4">
+                       <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
+                       <input 
+                          value={gifSearch}
+                          onChange={(e) => handleGifSearch(e.target.value)}
+                          placeholder="Search GIFs" 
+                          className="w-full bg-slate-100 rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-synapse-500/20 focus:bg-white transition-all text-[15px]"
+                          autoFocus
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 overflow-y-auto flex-1 content-start pr-1">
+                       {gifs.map((g: any) => (
+                          <div key={g.id} onClick={() => selectGif(g.images.fixed_height.url)} className="cursor-pointer rounded-xl overflow-hidden bg-slate-100 h-32 relative group hover:ring-2 hover:ring-synapse-500 transition-all">
+                             <img src={g.images.fixed_height_small.url} className="w-full h-full object-cover" />
+                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                          </div>
+                       ))}
+                    </div>
+                </div>
+              )}
 
-      <Separator className="bg-slate-200/60" />
+            </DialogContent>
+          </Dialog>
+        </div>
 
-      <div className="flex items-center justify-between pt-1">
-        <ActionButton 
-          icon={Video} color="text-[#F02849]" label="Live video" 
-          onClick={() => {}} 
-        />
-        <ActionButton 
-          icon={Image} color="text-[#45BD62]" label="Photo/video" 
-          onClick={() => { setIsOpen(true); setTimeout(() => fileInputRef.current?.click(), 200); }} 
-        />
-        <ActionButton 
-          icon={Smile} color="text-[#F7B928]" label="Feeling/activity" 
-          onClick={() => { setIsOpen(true); setSubModal('feeling'); }} 
-        />
+        <Separator className="bg-slate-100 mb-2" />
+
+        <div className="flex items-center justify-between pt-1">
+          <ActionButton 
+            icon={Video} color="text-rose-500" label="Live video" 
+            onClick={() => {}} 
+          />
+          <ActionButton 
+            icon={Image} color="text-emerald-500" label="Photo/video" 
+            onClick={() => { setIsOpen(true); setTimeout(() => fileInputRef.current?.click(), 200); }} 
+          />
+          <ActionButton 
+            icon={Smile} color="text-amber-500" label="Feeling/activity" 
+            onClick={() => { setIsOpen(true); setSubModal('feeling'); }} 
+          />
+        </div>
       </div>
       
       {/* Hidden File Input */}
@@ -766,15 +782,15 @@ export const CreatePost: React.FC = () => {
 const ActionButton: React.FC<{ icon: any, color: string, label: string, onClick: () => void }> = ({ icon: Icon, color, label, onClick }) => (
   <button 
     onClick={onClick}
-    className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-500 font-semibold text-[15px]"
+    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all group hover:bg-slate-50"
   >
-     <Icon className={`w-6 h-6 ${color}`} />
-     <span className="hidden sm:inline text-slate-600">{label}</span>
+     <Icon className={cn("w-6 h-6 transition-transform group-hover:scale-110", color.split(' ')[0])} />
+     <span className="hidden sm:inline text-slate-600 font-semibold text-[14px]">{label}</span>
   </button>
 );
 
-const TooltipBtn: React.FC<{ onClick: () => void, icon: any, color: string, tooltip: string }> = ({ onClick, icon: Icon, color, tooltip }) => (
-  <div onClick={onClick} className={`p-2 hover:bg-slate-100 rounded-full cursor-pointer ${color} relative group transition-colors`} title={tooltip}>
+const TooltipBtn: React.FC<{ onClick: () => void, icon: any, color: string, bgHover: string, tooltip: string }> = ({ onClick, icon: Icon, color, bgHover, tooltip }) => (
+  <div onClick={onClick} className={cn("p-2 rounded-full cursor-pointer transition-all active:scale-95", bgHover, color)} title={tooltip}>
     <Icon className="w-6 h-6" />
   </div>
 );
