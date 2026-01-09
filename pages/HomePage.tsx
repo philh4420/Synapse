@@ -78,18 +78,16 @@ export const HomePage: React.FC = () => {
   };
 
   // Wide layout for everything except Feed (which mimics FB's narrow feed)
-  // Memories page is somewhat wide but centered, similar to profile
-  // Saved page is also centered but potentially wider than feed
   const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile' || activeTab === 'memories' || activeTab === 'bookmarks' || activeTab === 'pages' || activeTab === 'events' || activeTab === 'settings' || activeTab === 'help' || activeTab === 'display';
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] relative selection:bg-synapse-200 selection:text-synapse-900">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 relative selection:bg-synapse-200 selection:text-synapse-900 transition-colors duration-300">
       
       {/* 2026 Subtle Mesh Gradient Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 mix-blend-multiply">
-         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-[120px]" />
-         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/30 rounded-full blur-[120px]" />
-         <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-cyan-200/20 rounded-full blur-[100px]" />
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 dark:opacity-20 mix-blend-multiply dark:mix-blend-normal">
+         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/30 dark:bg-purple-900/10 rounded-full blur-[120px]" />
+         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/30 dark:bg-blue-900/10 rounded-full blur-[120px]" />
+         <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-cyan-200/20 dark:bg-cyan-900/10 rounded-full blur-[100px]" />
       </div>
       
       <div className="relative z-10">
@@ -104,7 +102,6 @@ export const HomePage: React.FC = () => {
           </div>
 
           {/* Center Content */}
-          {/* If isWidePage, use max-w-[1600px] to fill space between sidebars. */}
           <div className={cn(
             "flex-1 w-full mx-auto py-6 transition-all duration-300 min-w-0 z-10",
             isWidePage ? "px-2 md:px-4 max-w-[1600px]" : "max-w-[740px] lg:px-8"
@@ -121,10 +118,10 @@ export const HomePage: React.FC = () => {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl pt-24 px-6 lg:hidden animate-in fade-in slide-in-from-bottom-10">
+          <div className="fixed inset-0 z-[60] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl pt-24 px-6 lg:hidden animate-in fade-in slide-in-from-bottom-10">
             <button 
               onClick={() => setMobileMenuOpen(false)}
-              className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full"
+              className="absolute top-6 right-6 p-2 bg-slate-100 dark:bg-slate-800 rounded-full dark:text-slate-200"
             >
               <X />
             </button>
@@ -133,14 +130,14 @@ export const HomePage: React.FC = () => {
                 <button 
                   key={item}
                   onClick={() => { handleTabChange(item.toLowerCase() === 'watch' ? 'videos' : item.toLowerCase()); setMobileMenuOpen(false); }}
-                  className="block w-full text-left text-2xl font-bold text-slate-800 py-4 border-b border-slate-100 hover:text-synapse-600 transition-colors"
+                  className="block w-full text-left text-2xl font-bold text-slate-800 dark:text-slate-100 py-4 border-b border-slate-100 dark:border-slate-800 hover:text-synapse-600 transition-colors"
                 >
                   {item}
                 </button>
               ))}
               <button 
                   onClick={() => { handleTabChange('admin'); setMobileMenuOpen(false); }}
-                  className="block w-full text-left text-2xl font-black text-synapse-600 py-4 border-b border-slate-100"
+                  className="block w-full text-left text-2xl font-black text-synapse-600 py-4 border-b border-slate-100 dark:border-slate-800"
               >
                 Admin Panel
               </button>

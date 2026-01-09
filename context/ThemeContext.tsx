@@ -10,51 +10,73 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { userProfile } = useAuth();
 
   useEffect(() => {
-    // Default settings if undefined
+    const root = document.documentElement;
+    const body = document.body;
+
+    // Default settings
     const theme = userProfile?.settings?.theme || 'system';
     const compact = userProfile?.settings?.accessibility?.compactMode || false;
     const fontSize = userProfile?.settings?.accessibility?.fontSize || 'medium';
     const highContrast = userProfile?.settings?.accessibility?.highContrast || false;
     const reduceMotion = userProfile?.settings?.accessibility?.reduceMotion || false;
 
-    const root = document.documentElement;
-    const body = document.body;
+    // --- 1. Theme Application Logic ---
+    const applyTheme = () => {
+      root.classList.remove('light', 'dark');
+      
+      if (theme === 'system') {
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        root.classList.add(systemDark ? 'dark' : 'light');
+      } else {
+        root.classList.add(theme);
+      }
+    };
 
-    // 1. Theme Application
-    root.classList.remove('light', 'dark');
-    if (theme === 'system') {
-      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.add(systemDark ? 'dark' : 'light');
-    } else {
-      root.classList.add(theme);
-    }
+    applyTheme(); // Apply immediately
 
-    // 2. Compact Mode
+    // Listen for system changes if theme is 'system'
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      if (theme === 'system') {
+        applyTheme();
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleSystemChange);
+
+    // --- 2. Other Display Settings ---
+    
+    // Compact Mode
     if (compact) {
       body.classList.add('compact-mode');
     } else {
       body.classList.remove('compact-mode');
     }
 
-    // 3. High Contrast
+    // High Contrast
     if (highContrast) {
       body.classList.add('high-contrast');
     } else {
       body.classList.remove('high-contrast');
     }
 
-    // 4. Reduce Motion
+    // Reduce Motion
     if (reduceMotion) {
       body.classList.add('reduce-motion');
     } else {
       body.classList.remove('reduce-motion');
     }
 
-    // 5. Font Size
+    // Font Size
     root.classList.remove('text-small', 'text-medium', 'text-large');
     root.classList.add(`text-${fontSize}`);
 
-  }, [userProfile]);
+    // Cleanup listener
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemChange);
+    };
+
+  }, [userProfile]); // Re-run when profile/settings change
 
   return <ThemeContext.Provider value={{}}>{children}</ThemeContext.Provider>;
 };
