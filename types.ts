@@ -5,7 +5,11 @@ export type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | '
 export interface UserSettings {
   theme?: 'light' | 'dark' | 'system';
   language?: string;
-  privacyDefault?: 'public' | 'friends' | 'only_me';
+  privacy?: {
+    defaultPostAudience?: 'public' | 'friends' | 'only_me';
+    friendRequests?: 'everyone' | 'friends_of_friends';
+    searchEngineIndexing?: boolean;
+  };
   notifications?: {
     email?: boolean;
     push?: boolean;
@@ -14,7 +18,6 @@ export interface UserSettings {
     tags?: boolean;
   };
   loginAlerts?: boolean;
-  twoFactor?: boolean;
 }
 
 export interface UserProfile {
