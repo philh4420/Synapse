@@ -40,7 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onVie
     { icon: Flag, label: 'Pages', id: 'pages', color: 'text-orange-500', bg: 'bg-orange-50 group-hover:bg-orange-100' },
     { icon: Calendar, label: 'Events', id: 'events', color: 'text-red-500', bg: 'bg-red-50 group-hover:bg-red-100' },
     { icon: LayoutGrid, label: 'Groups', id: 'communities', color: 'text-indigo-500', bg: 'bg-indigo-50 group-hover:bg-indigo-100' },
-    { icon: ShieldCheck, label: 'Privacy Center', id: 'privacy', color: 'text-emerald-500', bg: 'bg-emerald-50 group-hover:bg-emerald-100' },
   ];
 
   const MenuItem = ({ icon: Icon, label, onClick, active, color, bg, image }: any) => (

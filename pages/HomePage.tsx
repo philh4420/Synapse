@@ -14,7 +14,6 @@ import { SettingsPage } from '../components/SettingsPage';
 import { HelpPage } from '../components/HelpPage';
 import { DisplayPage } from '../components/DisplayPage';
 import { CommunitiesPage } from '../components/CommunitiesPage';
-import { PrivacyPage } from '../components/PrivacyPage';
 import { LegalPage } from '../components/LegalPage'; // Import new page
 import { Header } from '../components/Header';
 import { Messenger } from '../components/Messenger';
@@ -109,8 +108,6 @@ export const HomePage: React.FC = () => {
         return <CommunitiesPage viewedCommunityId={viewedCommunityId} onViewCommunity={handleViewCommunity} />;
       case 'settings':
         return <SettingsPage />;
-      case 'privacy':
-        return <PrivacyPage />;
       case 'legal':
         return <LegalPage />;
       case 'help':
