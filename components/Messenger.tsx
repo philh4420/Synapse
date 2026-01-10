@@ -94,7 +94,7 @@ export const Messenger: React.FC = () => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedChats = snapshot.docs.map(doc => ({
+      const fetchedChats = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as Chat[];
@@ -136,7 +136,7 @@ export const Messenger: React.FC = () => {
     );
 
     const unsubMsgs = onSnapshot(qMsgs, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
+      const msgs = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as Message[];
@@ -171,7 +171,7 @@ export const Messenger: React.FC = () => {
               );
               const snap = await getDocs(qPhotos);
               const photos = snap.docs
-                 .map(d => d.data().image)
+                 .map(d => (d.data() as any).image)
                  .filter(img => img); // Filter non-null
               setSharedPhotos(photos);
            } catch (e) { console.error("Error fetching photos", e); }
@@ -350,12 +350,12 @@ export const Messenger: React.FC = () => {
          );
          const snapshot = await getDocs(q);
          const foundDoc = snapshot.docs.find(doc => {
-            const data = doc.data();
+            const data = doc.data() as any;
             return data.participants.includes(friend.uid);
          });
          
          if (foundDoc) {
-            targetChat = { id: foundDoc.id, ...foundDoc.data() } as Chat;
+            targetChat = { id: foundDoc.id, ...(foundDoc.data() as any) } as Chat;
          }
        } catch (e) { console.error("Error checking existing chats", e); }
     }

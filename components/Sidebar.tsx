@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Users, Bookmark, Calendar, Clock, ChevronDown, Flag, LayoutGrid, Activity } from 'lucide-react';
+import { Users, Bookmark, Calendar, Clock, ChevronDown, Flag, LayoutGrid, Activity, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';
 import { Separator } from './ui/Separator';
@@ -24,7 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onVie
     if (!user) return;
     const q = query(collection(db, 'communities'), where('members', 'array-contains', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const comms = snapshot.docs.map(doc => ({
+      const comms = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as Community[];
@@ -40,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onVie
     { icon: Flag, label: 'Pages', id: 'pages', color: 'text-orange-500', bg: 'bg-orange-50 group-hover:bg-orange-100' },
     { icon: Calendar, label: 'Events', id: 'events', color: 'text-red-500', bg: 'bg-red-50 group-hover:bg-red-100' },
     { icon: LayoutGrid, label: 'Groups', id: 'communities', color: 'text-indigo-500', bg: 'bg-indigo-50 group-hover:bg-indigo-100' },
+    { icon: ShieldCheck, label: 'Privacy Center', id: 'privacy', color: 'text-emerald-500', bg: 'bg-emerald-50 group-hover:bg-emerald-100' },
   ];
 
   const MenuItem = ({ icon: Icon, label, onClick, active, color, bg, image }: any) => (

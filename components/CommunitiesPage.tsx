@@ -61,7 +61,7 @@ export const CommunitiesPage: React.FC<CommunitiesPageProps> = ({ viewedCommunit
   useEffect(() => {
     const q = query(collection(db, 'communities'), orderBy('memberCount', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const comms = snapshot.docs.map(doc => ({
+      const comms = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as Community[];
@@ -86,7 +86,7 @@ export const CommunitiesPage: React.FC<CommunitiesPageProps> = ({ viewedCommunit
         // Fallback fetch if not in list yet
         getDoc(doc(db, 'communities', viewedCommunityId)).then(snap => {
           if (snap.exists()) {
-            const data = { id: snap.id, ...snap.data() } as Community;
+            const data = { id: snap.id, ...(snap.data() as any) } as Community;
             setActiveCommunity(data);
             fetchCommunityPosts(data.id);
           }
@@ -107,7 +107,7 @@ export const CommunitiesPage: React.FC<CommunitiesPageProps> = ({ viewedCommunit
     
     // Using onSnapshot for real-time feed updates
     return onSnapshot(q, (snapshot) => {
-      const posts = snapshot.docs.map(doc => ({
+      const posts = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate() || new Date(),

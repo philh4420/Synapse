@@ -42,11 +42,14 @@ export const SavedPage: React.FC = () => {
         
         const posts = snapshots
           .filter(snap => snap.exists())
-          .map(snap => ({
-            id: snap.id,
-            ...snap.data(),
-            timestamp: snap.data()?.timestamp?.toDate() || new Date(),
-          })) as PostType[];
+          .map(snap => {
+            const data = snap.data() as any;
+            return {
+              id: snap.id,
+              ...data,
+              timestamp: data?.timestamp?.toDate() || new Date(),
+            };
+          }) as PostType[];
 
         setSavedPosts(posts);
       } catch (error) {

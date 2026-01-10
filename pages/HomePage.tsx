@@ -14,6 +14,7 @@ import { SettingsPage } from '../components/SettingsPage';
 import { HelpPage } from '../components/HelpPage';
 import { DisplayPage } from '../components/DisplayPage';
 import { CommunitiesPage } from '../components/CommunitiesPage';
+import { PrivacyPage } from '../components/PrivacyPage';
 import { Header } from '../components/Header';
 import { Messenger } from '../components/Messenger';
 import { Menu, X, Megaphone, AlertTriangle, Info } from 'lucide-react';
@@ -107,6 +108,8 @@ export const HomePage: React.FC = () => {
         return <CommunitiesPage viewedCommunityId={viewedCommunityId} onViewCommunity={handleViewCommunity} />;
       case 'settings':
         return <SettingsPage />;
+      case 'privacy':
+        return <PrivacyPage />;
       case 'help':
         return <HelpPage />;
       case 'display':
@@ -129,7 +132,7 @@ export const HomePage: React.FC = () => {
   };
 
   // Wide layout for most pages except Feed
-  const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile' || activeTab === 'memories' || activeTab === 'bookmarks' || activeTab === 'pages' || activeTab === 'events' || activeTab === 'communities' || activeTab === 'settings' || activeTab === 'help' || activeTab === 'display';
+  const isWidePage = activeTab === 'friends' || activeTab === 'admin' || activeTab === 'profile' || activeTab === 'memories' || activeTab === 'bookmarks' || activeTab === 'pages' || activeTab === 'events' || activeTab === 'communities' || activeTab === 'settings' || activeTab === 'help' || activeTab === 'display' || activeTab === 'privacy';
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 relative selection:bg-synapse-200 selection:text-synapse-900 transition-colors duration-300">

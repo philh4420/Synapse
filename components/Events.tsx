@@ -56,7 +56,7 @@ export const Events: React.FC = () => {
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedEvents = snapshot.docs.map(doc => ({
+      const fetchedEvents = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as Event[];

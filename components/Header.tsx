@@ -4,7 +4,7 @@ import {
   Search, Home, Users, LayoutGrid, MessageCircle, Bell, ChevronDown, 
   Activity, Shield, MonitorPlay, X, LogOut, Settings, HelpCircle, 
   Moon, PlusCircle, PenTool, Flag, Star, MoreHorizontal, Menu, UserPlus,
-  Ticket
+  Ticket, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMessenger } from '../context/MessengerContext';
@@ -571,6 +571,18 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                                 <Settings className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                             </div>
                             <span className="font-medium text-slate-900 dark:text-slate-100">Settings & privacy</span>
+                        </div>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                        className="py-2.5 px-3 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-slate-50 dark:focus:bg-slate-800"
+                        onClick={() => setActiveTab('privacy')}
+                    >
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                                <ShieldCheck className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                            </div>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">Privacy Center</span>
                         </div>
                     </DropdownMenuItem>
 

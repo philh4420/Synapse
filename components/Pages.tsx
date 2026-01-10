@@ -49,7 +49,7 @@ export const Pages: React.FC = () => {
   useEffect(() => {
     const q = query(collection(db, 'pages'), orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const pages = snapshot.docs.map(doc => ({
+      const pages = (snapshot as any).docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as Page[];

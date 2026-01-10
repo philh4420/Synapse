@@ -45,7 +45,7 @@ export const MemoriesPage: React.FC = () => {
         const grouped: Record<number, PostType[]> = {};
 
         snapshot.docs.forEach(doc => {
-          const data = doc.data();
+          const data = doc.data() as any;
           const postDate = data.timestamp?.toDate();
           
           if (postDate) {
