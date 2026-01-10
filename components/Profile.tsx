@@ -674,7 +674,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUid, onViewProfile, onNa
                         <button onClick={() => onNavigate?.('legal:advertising')} className="hover:underline hover:text-slate-600">Advertising</button> · 
                         <button onClick={() => onNavigate?.('legal:ad_choices')} className="hover:underline hover:text-slate-600">Ad Choices</button> · 
                         <button onClick={() => onNavigate?.('legal:cookies')} className="hover:underline hover:text-slate-600">Cookies</button> · 
-                        More · Synapse © 2026
+                        · Synapse © 2026
                      </p>
                   </div>
                </div>

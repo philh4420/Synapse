@@ -611,8 +611,17 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                     </div>
                 </DropdownMenuItem>
 
-                <div className="mt-4 text-xs text-slate-400 px-2 pb-2">
-                   Privacy  · Terms  · Advertising  · Ad Choices   · Cookies  ·   More · Synapse © 2026
+                <div className="mt-4 pb-2 px-2">
+                   <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-400 leading-relaxed font-medium">
+                      <button onClick={() => setActiveTab('legal:privacy')} className="hover:underline hover:text-slate-600">Privacy</button> · 
+                      <button onClick={() => setActiveTab('legal:terms')} className="hover:underline hover:text-slate-600">Terms</button> · 
+                      <button onClick={() => setActiveTab('legal:advertising')} className="hover:underline hover:text-slate-600">Advertising</button> · 
+                      <button onClick={() => setActiveTab('legal:ad_choices')} className="hover:underline hover:text-slate-600">Ad Choices</button> · 
+                      <button onClick={() => setActiveTab('legal:cookies')} className="hover:underline hover:text-slate-600">Cookies</button>
+                   </div>
+                   <p className="text-xs text-slate-400 mt-2">
+                      Synapse © 2026
+                   </p>
                 </div>
             </DropdownMenuContent>
           </DropdownMenu>
