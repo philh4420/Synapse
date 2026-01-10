@@ -2,27 +2,29 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, getDocs, query, where, documentId, arrayRemove, collection } from 'firebase/firestore';
 import { updatePassword, updateEmail, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { db } from '../firebaseConfig';
 import { 
   Settings, Shield, Lock, Bell, Globe, User, 
-  ChevronRight, Key, Mail, Eye, EyeOff, Loader2,
-  Trash2, Save, LogOut, AlertTriangle, CheckCircle2, Smartphone, 
-  Activity, Database, Download, Search, UserCheck, Sliders
+  ChevronRight, Key, Eye, EyeOff, Loader2,
+  Trash2, AlertTriangle, Smartphone, 
+  Activity, Database, Download, Search, UserCheck, Sliders,
+  UserX, Check
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Card } from './ui/Card';
 import { Separator } from './ui/Separator';
 import { cn } from '../lib/utils';
-import { UserSettings } from '../types';
+import { UserSettings, UserProfile } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/Dialog';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';
 
 type SettingsSection = 'account' | 'security' | 'privacy' | 'notifications' | 'language';
 
 export const SettingsPage: React.FC = () => {
-  const { user, userProfile, refreshProfile, logout } = useAuth();
+  const { user, userProfile, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
   const [loading, setLoading] = useState(false);
@@ -65,6 +67,12 @@ export const SettingsPage: React.FC = () => {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [downloadStep, setDownloadStep] = useState(0);
 
+  // Blocking & Ads
+  const [blockingDialogOpen, setBlockingDialogOpen] = useState(false);
+  const [blockedUsersDetails, setBlockedUsersDetails] = useState<UserProfile[]>([]);
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
+  const [adPrefsOpen, setAdPrefsOpen] = useState(false);
+
   // Initialize state from profile
   useEffect(() => {
     if (userProfile) {
@@ -80,6 +88,37 @@ export const SettingsPage: React.FC = () => {
       }));
     }
   }, [userProfile, user]);
+
+  // Fetch blocked users when dialog opens
+  useEffect(() => {
+    if (blockingDialogOpen && userProfile?.blockedUsers && userProfile.blockedUsers.length > 0) {
+      const fetchBlocked = async () => {
+        setLoadingBlocked(true);
+        try {
+          const blockedIds = userProfile.blockedUsers!;
+          const chunks = [];
+          for (let i = 0; i < blockedIds.length; i += 10) {
+            chunks.push(blockedIds.slice(i, i + 10));
+          }
+          
+          const promises = chunks.map(chunk => 
+            getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)))
+          );
+          
+          const snapshots = await Promise.all(promises);
+          const users = snapshots.flatMap(snap => snap.docs.map(d => d.data() as UserProfile));
+          setBlockedUsersDetails(users);
+        } catch (e) {
+          console.error("Error fetching blocked users", e);
+        } finally {
+          setLoadingBlocked(false);
+        }
+      };
+      fetchBlocked();
+    } else {
+      setBlockedUsersDetails([]);
+    }
+  }, [blockingDialogOpen, userProfile?.blockedUsers]);
 
   // --- Generic Update Helper ---
   const saveSettingsToFirestore = async (newSettings: UserSettings) => {
@@ -211,6 +250,20 @@ export const SettingsPage: React.FC = () => {
      }
   };
 
+  const handleUnblock = async (targetUid: string) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        blockedUsers: arrayRemove(targetUid)
+      });
+      setBlockedUsersDetails(prev => prev.filter(u => u.uid !== targetUid));
+      toast("User unblocked", "success");
+    } catch (e) {
+      console.error(e);
+      toast("Failed to unblock user", "error");
+    }
+  };
+
   const openDeleteDialog = () => {
      setDeletePassword('');
      setDeleteConfirmationText('');
@@ -260,7 +313,6 @@ export const SettingsPage: React.FC = () => {
     </div>
   );
 
-  // Reused from PrivacyPage for consistent rich UI
   const PrivacyOption = ({ 
     icon: Icon, 
     title, 
@@ -426,7 +478,7 @@ export const SettingsPage: React.FC = () => {
                </div>
             )}
 
-            {/* --- PRIVACY SETTINGS (MERGED FROM PRIVACYPAGE) --- */}
+            {/* --- PRIVACY SETTINGS --- */}
             {activeSection === 'privacy' && (
                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2">
                   
@@ -463,16 +515,7 @@ export const SettingsPage: React.FC = () => {
                               </div>
                               <div className="flex-1">
                                  <p className="text-xs font-bold text-slate-800">Password</p>
-                                 <p className="text-[10px] text-slate-500">Updated 3mo ago</p>
-                              </div>
-                           </div>
-                           <div className="relative flex gap-3 items-center">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-white shadow-sm flex items-center justify-center z-10 shrink-0">
-                                 <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                              </div>
-                              <div className="flex-1">
-                                 <p className="text-xs font-bold text-slate-800">2-Factor Auth</p>
-                                 <p className="text-[10px] text-slate-500">Enabled</p>
+                                 <p className="text-[10px] text-slate-500">Secure</p>
                               </div>
                            </div>
                            <div className="relative flex gap-3 items-center">
@@ -481,7 +524,7 @@ export const SettingsPage: React.FC = () => {
                               </div>
                               <div className="flex-1">
                                  <p className="text-xs font-bold text-slate-800">Last Login</p>
-                                 <p className="text-[10px] text-slate-500">San Francisco • Chrome</p>
+                                 <p className="text-[10px] text-slate-500">Recently active</p>
                               </div>
                            </div>
                         </div>
@@ -552,14 +595,17 @@ export const SettingsPage: React.FC = () => {
                            color="text-emerald-600"
                            bg="bg-emerald-50"
                         />
-                        <div className="group relative overflow-hidden bg-slate-50 border border-slate-100 rounded-3xl p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-200 flex flex-col justify-between">
+                        <div 
+                           onClick={() => setBlockingDialogOpen(true)}
+                           className="group relative overflow-hidden bg-slate-50 border border-slate-100 rounded-3xl p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-200 flex flex-col justify-between cursor-pointer"
+                        >
                            <div>
                               <div className="flex items-center justify-between mb-4">
                                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-rose-50 text-rose-500">
                                     <AlertTriangle className="w-6 h-6" />
                                  </div>
                               </div>
-                              <h3 className="text-lg font-bold text-slate-900 mb-2">Blocking</h3>
+                              <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-rose-600 transition-colors">Blocking</h3>
                               <p className="text-sm text-slate-500 font-medium">Manage blocked users.</p>
                            </div>
                            <div className="mt-4 pt-4 border-t border-slate-200/50">
@@ -586,8 +632,8 @@ export const SettingsPage: React.FC = () => {
                               Synapse shows you ads relevant to your interests. We never sell your personal information. You can control the data used to show you ads.
                            </p>
                            <div className="flex gap-2 pt-1">
-                              <Button variant="outline" className="rounded-xl font-bold h-9 text-xs">Review Interests</Button>
-                              <Button variant="ghost" className="rounded-xl font-bold text-slate-600 h-9 text-xs">Ad Settings</Button>
+                              <Button variant="outline" className="rounded-xl font-bold h-9 text-xs" onClick={() => setAdPrefsOpen(true)}>Review Interests</Button>
+                              <Button variant="ghost" className="rounded-xl font-bold text-slate-600 h-9 text-xs" onClick={() => setAdPrefsOpen(true)}>Ad Settings</Button>
                            </div>
                         </div>
                      </div>
@@ -706,6 +752,90 @@ export const SettingsPage: React.FC = () => {
                >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Permanently"}
                </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* Blocking Management Dialog */}
+      <Dialog open={blockingDialogOpen} onOpenChange={setBlockingDialogOpen}>
+         <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+               <DialogTitle>Blocked Users</DialogTitle>
+               <DialogDescription>People you block will no longer be able to see things you post on your timeline or message you.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 max-h-[300px] overflow-y-auto space-y-2">
+               {loadingBlocked ? (
+                  <div className="text-center py-8"><Loader2 className="w-6 h-6 animate-spin mx-auto text-slate-400" /></div>
+               ) : blockedUsersDetails.length > 0 ? (
+                  blockedUsersDetails.map(u => (
+                     <div key={u.uid} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center gap-3">
+                           <Avatar className="w-10 h-10 border border-white shadow-sm">
+                              <AvatarImage src={u.photoURL || ''} />
+                              <AvatarFallback>{u.displayName?.[0]}</AvatarFallback>
+                           </Avatar>
+                           <span className="font-semibold text-slate-900">{u.displayName}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => handleUnblock(u.uid)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-200 font-bold">
+                           Unblock
+                        </Button>
+                     </div>
+                  ))
+               ) : (
+                  <div className="text-center py-8 text-slate-500 text-sm">
+                     You haven't blocked anyone yet.
+                  </div>
+               )}
+            </div>
+            <DialogFooter>
+               <Button onClick={() => setBlockingDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* Ad Preferences Dialog */}
+      <Dialog open={adPrefsOpen} onOpenChange={setAdPrefsOpen}>
+         <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+               <DialogTitle>Ad Preferences</DialogTitle>
+               <DialogDescription>Control how ads are shown to you on Synapse.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-6">
+               <div className="space-y-4">
+                  <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Settings</h4>
+                  <div className="flex items-center justify-between">
+                     <div>
+                        <p className="font-medium text-slate-900 text-sm">Personalized Ads</p>
+                        <p className="text-xs text-slate-500">Show ads based on your activity on Synapse.</p>
+                     </div>
+                     <Toggle checked={true} onChange={() => {}} label="" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                     <div>
+                        <p className="font-medium text-slate-900 text-sm">Partner Data</p>
+                        <p className="text-xs text-slate-500">Use data from partners to show better ads.</p>
+                     </div>
+                     <Toggle checked={false} onChange={() => {}} label="" />
+                  </div>
+               </div>
+               
+               <Separator />
+               
+               <div className="space-y-3">
+                  <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Your Interests</h4>
+                  <div className="flex flex-wrap gap-2">
+                     {['Technology', 'Travel', 'Design', 'Music', 'Startups'].map(tag => (
+                        <div key={tag} className="flex items-center gap-1 px-3 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-600 border border-slate-200">
+                           {tag}
+                           <button className="hover:text-red-500 ml-1"><UserX className="w-3 h-3" /></button>
+                        </div>
+                     ))}
+                  </div>
+                  <p className="text-xs text-slate-400 italic">You can remove interests to stop seeing related ads.</p>
+               </div>
+            </div>
+            <DialogFooter>
+               <Button onClick={() => setAdPrefsOpen(false)}>Save Preferences</Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
