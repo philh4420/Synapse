@@ -1,6 +1,7 @@
+
 /* 
   SYNAPSE CUSTOM STYLES
-  Enhancements over Tailwind defaults.
+  Modern social platform styling.
 */
 
 /* Scrollbar Customization */
@@ -40,7 +41,7 @@
   background-color: #475569;
 }
 
-/* Custom Keyframe Animations (Replacing tailwindcss-animate) */
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -77,30 +78,12 @@
   to { transform: rotate(360deg); }
 }
 
-/* Utility Classes for Animations */
-.animate-fade-in {
-  animation: fadeIn 0.7s ease-out forwards;
-}
-
-.animate-slide-up {
-  animation: slideUpFade 0.7s ease-out forwards;
-}
-
-.animate-slide-right {
-  animation: slideRightFade 0.7s ease-out forwards;
-}
-
-.animate-slide-left {
-  animation: slideLeftFade 0.7s ease-out forwards;
-}
-
-.animate-gradient-x {
-  animation: gradient-x 15s ease infinite;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 3s linear infinite;
-}
+.animate-fade-in { animation: fadeIn 0.7s ease-out forwards; }
+.animate-slide-up { animation: slideUpFade 0.7s ease-out forwards; }
+.animate-slide-right { animation: slideRightFade 0.7s ease-out forwards; }
+.animate-slide-left { animation: slideLeftFade 0.7s ease-out forwards; }
+.animate-gradient-x { animation: gradient-x 15s ease infinite; }
+.animate-spin-slow { animation: spin-slow 3s linear infinite; }
 
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
@@ -171,7 +154,6 @@
   --ring: 243 75% 59%;
 }
 
-/* Global Body */
 body {
   font-family: "Plus Jakarta Sans", sans-serif;
   background-color: hsl(var(--background));
@@ -194,7 +176,7 @@ body {
 .dark .text-slate-900, .dark .text-slate-800, .dark .text-slate-700 { color: #f8fafc !important; }
 .dark .text-slate-600 { color: #cbd5e1 !important; }
 .dark .text-slate-500 { color: #94a3b8 !important; }
-.dark .text-slate-400 { color: #cbd5e1 !important; } /* Lightened from previous #64748b */
+.dark .text-slate-400 { color: #cbd5e1 !important; }
 
 /* Input Fields Dark Mode Contrast Fix */
 .dark input, .dark textarea, .dark select { 
@@ -203,20 +185,16 @@ body {
   border-color: #334155 !important; 
 }
 .dark input::placeholder, .dark textarea::placeholder { 
-  color: #94a3b8 !important; /* Brighter placeholder */
+  color: #94a3b8 !important;
 }
 
 .dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15) !important; }
 
+/* Light Mode Overrides for Consistency */
 .light .bg-white { background-color: #ffffff !important; color: #0f172a !important; }
 .light .bg-slate-50 { background-color: #f8fafc !important; border-color: #e2e8f0 !important; color: #0f172a !important; }
 .light .bg-slate-100 { background-color: #f1f5f9 !important; color: #0f172a !important; }
-.light .bg-slate-200 { background-color: #e2e8f0 !important; }
 .light .text-slate-900 { color: #0f172a !important; }
-.light .text-slate-800 { color: #1e293b !important; }
-.light .text-slate-700 { color: #334155 !important; }
-.light .text-slate-600 { color: #475569 !important; }
-.light .text-slate-500 { color: #64748b !important; }
 .light body { background-color: #ffffff; color: #0f172a; }
 
 /* Accessibility Classes */
